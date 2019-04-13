@@ -366,7 +366,7 @@ module DTLB
 
     assign page_fault_comb= (~translation_off & tlb_hit & (op_type_reg == 2) & ~pte_d_out) | (~translation_off & tlb_hit & pte_u_out & (curr_prev_reg == smode) & ~sum_bit_reg) | (~pte_u_out & (curr_prev_reg == umode)) | (~translation_off & tlb_hit & (op_type_reg == 2) & ~pte_w_out) | (~translation_off & tlb_hit & pte_x_out & ~pte_r_out & ~mxr_reg);
     assign PAGE_FAULT     = page_fault_reg | page_fault_comb;
-    assign FAULT_TYPE     = page_fault_comb ? 2: fault_type_reg;
+    assign FAULT_TYPE     = page_fault_comb ? op_type_reg : fault_type_reg;
 
     assign PHY_ADDR       = translation_off ? virt_addr_reg : {pa_mem_data_out,page_offset};
     assign tlb_addr_valid = translation_off | tlb_hit | PAGE_FAULT | ACCESS_FAULT;
