@@ -40,9 +40,10 @@ module ITLB
     	input 	   [DATA_WIDTH-1  :0]   SATP				,
     	input      [1		  :0]   MPP				,
     	input	 			MPRV				,
-   	input 	   [1		  :0]	CURR_PREV,
-    input OFF_TRANSLATION_FROM_TLB,
-    output [1:0] OP_TYPE_OUT
+   	input 	   [1		  :0]	CURR_PREV			,
+    	input 				OFF_TRANSLATION_FROM_TLB	,
+    	output 	   [1		  :0]   OP_TYPE_OUT			,
+	input 				SUM_BIT
 
     );
 
@@ -60,7 +61,8 @@ module ITLB
     reg  [1         	:0] mpp_reg;
     reg 		    mprv_reg;
     reg  [1         	:0] curr_prev_reg;
-    reg off_translation_from_tlb_reg;
+    reg 		    off_translation_from_tlb_reg;
+    reg 		    sum_bit_reg;
     wire [MODE_LEN  -1	:0] satp_mode;
     wire [ASID_LEN  -1	:0] satp_asid;
     wire [PPN_LEN   -1 	:0] satp_ppn;
@@ -71,8 +73,8 @@ module ITLB
     reg  [TLB_ADDR_WIDTH-1 : 0] pa_mem_waddr;
     reg  [PPN_LEN-1        : 0] pa_mem_data_in;
     wire [PPN_LEN-1        : 0] pa_mem_data_out;
-    wire 			dirty_out;
-    reg				dirty_in;
+    wire 			pte_u_out;
+    reg				pte_u_in;
 
     //tag memory signals
     reg  tag_mem_wren;
@@ -96,7 +98,6 @@ module ITLB
     wire 		    tlb_hit;
 
     reg  		    page_fault_reg;
-    reg  [1		:0] fault_type_reg;
     wire 		    page_fault_comb;
 
 	
@@ -146,7 +147,8 @@ module ITLB
 	    mpp_reg		 <=   0; // mpp intial value * should check
 	    mprv_reg		 <=   0;
 	    curr_prev_reg	 <=   mmode; // *should check	    
-        tlb_flush_reg<=0;
+            tlb_flush_reg	 <=   0;
+	    sum_bit_reg		 <=   0;
         end
         else if (tlb_addr_valid & VIRT_ADDR_VALID &  CACHE_READY) begin
 	    virt_addr_reg        <=   VIRT_ADDR; 
@@ -155,8 +157,9 @@ module ITLB
 	    mpp_reg		 <=   MPP;
 	    mprv_reg		 <=   MPRV;
 	    curr_prev_reg	 <=   CURR_PREV;
-        tlb_flush_reg<=TLB_FLUSH;
-        off_translation_from_tlb_reg <= OFF_TRANSLATION_FROM_TLB;
+            tlb_flush_reg	 <=   TLB_FLUSH;
+            off_translation_from_tlb_reg <= OFF_TRANSLATION_FROM_TLB;
+	    sum_bit_reg		 <=   SUM_BIT;
         end  
         else
             tlb_flush_reg <=0;  
@@ -171,27 +174,24 @@ module ITLB
             state                   <=IDLE;
             page_fault_reg          <=0;
             ACCESS_FAULT            <=0;
-            fault_type_reg          <=0;
         end
         else if (~tlb_addr_valid & ~valid_wren )begin   //check whether cache ready and make sure flag goes 0 one cycle before data get written
-            if(~addr_to_axim_valid_reg & (state == IDLE)   )begin
+            if(~addr_to_axim_valid_reg & (state == IDLE) & VIRT_ADDR_VALID )begin
                 addr_to_axim_valid_reg    <= 1;
                 addr_to_axim_reg          <= {8'd0,satp_ppn,vpn2,3'd0}; // calculate the AXI address from SATP
                 state                     <= ITER_1;
             end
             else if(state != IDLE) begin
         		if (DATA_FROM_AXIM_VALID)begin
-        		    if(~pte_v)begin
+        		    if(~pte_v | (~pte_r & pte_w))begin
         			addr_to_axim_valid_reg  <= 0;
         			page_fault_reg 		<= 1;
-        			fault_type_reg 		<= op_type_reg;
         			state      		<= IDLE;
         		    end
-        		    else if(pte_r | pte_x)begin // some other conditions are there for page fault
+        		    else if(pte_x)begin // some other conditions are there for page fault
         			addr_to_axim_valid_reg    <= 0;
-        			if(~pte_a | ((op_type_reg == 2) & ~pte_d))begin
+        			if(~pte_a | (pte_u & (curr_prev_reg == smode) & ~sum_bit_reg) | (~pte_u & (curr_prev_reg == umode))begin
         			   page_fault_reg <= 1;
-        			   fault_type_reg <= op_type_reg;
         			   state          <= IDLE;
         			end
         			else begin
@@ -212,7 +212,6 @@ module ITLB
         			else begin
                         		addr_to_axim_valid_reg    <= 0;
         			   	page_fault_reg 		  <= 1;
-        			   	fault_type_reg 		  <= op_type_reg;
         			   	state      		  <= IDLE;
         			end						
         		    end
@@ -222,7 +221,7 @@ module ITLB
                     	end
                     end
         end
-	else if(tlb_addr_valid & VIRT_ADDR_VALID &  CACHE_READY) page_fault_reg <= 0; // shoould check
+	else if(tlb_addr_valid & VIRT_ADDR_VALID &  CACHE_READY) page_fault_reg <= 0; // should check
 	else;
 
 	if(RST)begin
@@ -231,7 +230,7 @@ module ITLB
             	valid_wren             <= 0;
 	end
 	else if(DATA_FROM_AXIM_VALID)begin
-	     if(pte_v & (pte_r | pte_x) & pte_a & ((op_type_reg != 2) | pte_d))begin // all conditions upto IDLE state of above block
+	     if(pte_v &  pte_x & pte_a & (~pte_u | (curr_prev_reg != smode) | sum_bit_reg) & (pte_u | (curr_prev_reg != umode)))begin // all conditions upto IDLE state of above block
 		pa_mem_wren    <= 1;
             	pa_mem_waddr   <= pa_mem_raddr;
             	tag_mem_wren   <= 1;
@@ -239,13 +238,15 @@ module ITLB
             	valid_wren     <= 1;
             	valid_waddr    <= valid_raddr;
             	tag_mem_data_in<= virt_addr_reg[(PAGE_OFFSET_WIDTH+TLB_ADDR_WIDTH) +: ((LEVELS*VPN_LEN)-TLB_ADDR_WIDTH)];
-            	if     (state == ITER_1) {pa_mem_data_in,dirty_in} <= {pte_ppn2,vpn1,vpn0,pte_d};
-		else if(state == ITER_2) {pa_mem_data_in,dirty_in} <= {pte_ppn2,pte_ppn1,vpn0,pte_d};
-		else if(state == ITER_3) {pa_mem_data_in,dirty_in} <= {pte_ppn2,pte_ppn1,pte_ppn0,pte_d};
-		else 			 {pa_mem_data_in,dirty_in} <= 0;
+		// Page fault to be added when ITER_1 and ITER_2 have non zero
+		// values for pte_ppn1 and pte_ppn0 - misaligned superpage
+            	if     (state == ITER_1) {pa_mem_data_in,pte_u_in} <= {pte_ppn2,vpn1,vpn0,pte_u};
+		else if(state == ITER_2) {pa_mem_data_in,pte_u_in} <= {pte_ppn2,pte_ppn1,vpn0,pte_u};
+		else if(state == ITER_3) {pa_mem_data_in,pte_u_in} <= {pte_ppn2,pte_ppn1,pte_ppn0,pte_u};
+		else 			 {pa_mem_data_in,pte_u_in} <= 0;
 	     end
 	     else begin
-		 		pa_mem_wren            <= 0;
+		pa_mem_wren            <= 0;
             	tag_mem_wren           <= 0;
             	valid_wren             <= 0;	
              end
@@ -257,10 +258,9 @@ module ITLB
 	end
     end
 
-
     MEMORY  
     #(
-        .data_width(PPN_LEN+1),//plus 1 for dirty bit
+        .data_width(PPN_LEN+1),//plus 1 for pte_u bit
         .address_width(TLB_ADDR_WIDTH),
         .depth(TLB_DEPTH)
         )
@@ -270,8 +270,8 @@ module ITLB
         .PORTA_WREN(pa_mem_wren),
         .PORTA_RADDR(pa_mem_raddr),
         .PORTA_WADDR(pa_mem_waddr),
-        .PORTA_DATA_IN({pa_mem_data_in,dirty_in}),
-        .PORTA_DATA_OUT({pa_mem_data_out,dirty_out})
+        .PORTA_DATA_IN({pa_mem_data_in,pte_u_in}),
+        .PORTA_DATA_OUT({pa_mem_data_out,pte_u_out})
 
         );
     MEMORY  
@@ -313,20 +313,20 @@ module ITLB
     assign valid_raddr    = virt_addr_reg[PAGE_OFFSET_WIDTH+:TLB_ADDR_WIDTH];
     assign CURR_ADDR      = virt_addr_reg;
 
-    assign translation_off=off_translation_from_tlb_reg| ((satp_mode == 0) | ((satp_mode == 8) & (curr_prev_reg == mmode) & ~mprv_reg) | ((satp_mode == 8) & (curr_prev_reg == mmode) & mprv_reg & (op_type_reg == 3)) | (mprv_reg & (mpp_reg == mmode)))| (op_type_reg == 0);
+    assign translation_off=off_translation_from_tlb_reg| ((satp_mode == 0) | ((satp_mode == 8) & (curr_prev_reg == mmode) & ~mprv_reg) | ((satp_mode == 8) & (curr_prev_reg == mmode) & mprv_reg ) | (mprv_reg & (mpp_reg == mmode)))| (op_type_reg == 0);
 
     assign tlb_hit        = ((tag_mem_data_out == virt_addr_reg[(PAGE_OFFSET_WIDTH+TLB_ADDR_WIDTH) +: ((3*VPN_LEN)-TLB_ADDR_WIDTH)]) & valid_out);
 
-    assign page_fault_comb= (~translation_off & tlb_hit & (op_type_reg == 2) & ~dirty_out);
+    assign page_fault_comb= (~translation_off & tlb_hit & pte_u_out & (curr_prev_reg == smode) & ~sum_bit_reg) | (~pte_u_out & (curr_prev_reg == umode));
     assign PAGE_FAULT     = page_fault_reg | page_fault_comb;
-    assign FAULT_TYPE     = page_fault_comb ? 2: fault_type_reg;
+    assign FAULT_TYPE     = 3; // EXECUTE fault
 
     assign PHY_ADDR       = translation_off ? virt_addr_reg : {pa_mem_data_out,page_offset};
     assign tlb_addr_valid = translation_off | tlb_hit | PAGE_FAULT | ACCESS_FAULT;
 
     assign ADDR_TO_AXIM_VALID     = addr_to_axim_valid_reg;
     assign ADDR_TO_AXIM           = addr_to_axim_reg;
-    assign OP_TYPE_OUT =op_type_reg & {2{PHY_ADDR_VALID}};
+    assign OP_TYPE_OUT            = op_type_reg & {2{PHY_ADDR_VALID}};
 
 
     function integer logb2;
@@ -336,5 +336,6 @@ module ITLB
     endfunction
 
 endmodule
+
 
 

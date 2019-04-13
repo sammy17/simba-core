@@ -41,8 +41,8 @@ module DTLB
     	input      [1		  :0]   MPP				,
     	input	 			MPRV				,
    	input 	   [1		  :0]	CURR_PREV,
-    input OFF_TRANSLATION_FROM_TLB,
-    output [1:0] OP_TYPE_OUT,
+    	input OFF_TRANSLATION_FROM_TLB,
+    	output [1:0] OP_TYPE_OUT,
 	input [DATA_WIDTH-1:0] DATA_IN,
 	output [DATA_WIDTH-1:0] DATA_OUT,
 	input [8-1:0] WSTRB_IN,
@@ -53,9 +53,11 @@ module DTLB
 	output OP32_OUT,
 	output FLUSH_OUT,
 	output [4:0] AMO_OUT,
-    output  [ADDR_WIDTH-1:0] VIRT_ADDR_OUT,
+    	output  [ADDR_WIDTH-1:0] VIRT_ADDR_OUT,
 	input LWORD_IN,
-	output reg LWORD_OUT
+	output reg LWORD_OUT,
+	input 	SUM_BIT,
+	input   MXR
 
     );
 
@@ -74,6 +76,8 @@ module DTLB
     reg 		    mprv_reg;
     reg  [1         	:0] curr_prev_reg;
     reg off_translation_from_tlb_reg;
+    reg sum_bit_reg;
+    reg mxr_reg;
     wire [MODE_LEN  -1	:0] satp_mode;
     wire [ASID_LEN  -1	:0] satp_asid;
     wire [PPN_LEN   -1 	:0] satp_ppn;
@@ -84,8 +88,17 @@ module DTLB
     reg  [TLB_ADDR_WIDTH-1 : 0] pa_mem_waddr;
     reg  [PPN_LEN-1        : 0] pa_mem_data_in;
     wire [PPN_LEN-1        : 0] pa_mem_data_out;
-    wire 			dirty_out;
-    reg				dirty_in;
+    wire 			pte_d_out;
+    wire 			pte_u_out;
+    wire 			pte_w_out;
+    wire 			pte_r_out;
+    wire 			pte_x_out;
+    reg				pte_d_in;
+    reg				pte_u_in;
+    reg				pte_w_in;
+    reg				pte_r_in;
+    reg				pte_x_in;
+
 
     //tag memory signals
     reg  tag_mem_wren;
@@ -111,9 +124,9 @@ module DTLB
     reg  		    page_fault_reg;
     reg  [1		:0] fault_type_reg;
     wire 		    page_fault_comb;
-	reg [4:0] amo_in_reg;
-	reg flush_in_reg;
-	reg op32_in_reg;
+    reg  [4		:0] amo_in_reg;
+    reg 		    flush_in_reg;
+    reg 		    op32_in_reg;
 
 	
     reg  [ADDR_WIDTH		-1 : 0] virt_addr_reg;
@@ -156,19 +169,21 @@ module DTLB
 
     always @(posedge CLK) begin
         if (RST) begin
-            virt_addr_reg        <=   virt_addr_init;
-            op_type_reg          <=   init_op;
+            		virt_addr_reg        <=   virt_addr_init;
+            		op_type_reg          <=   init_op;
 			satp_reg		 <=   0;
 			mpp_reg		 <=   0; // mpp intial value * should check
-			mprv_reg		 <=   0;
-			curr_prev_reg	 <=   mmode; // *should check	    
-			tlb_flush_reg<=0;
+			mprv_reg <=   0;
+			curr_prev_reg <=mmode; // *should check	    
+			tlb_flush_reg <=0;
 			wstrb_in_reg <=0;
 			data_in_reg <=0;
 			amo_in_reg <=0;
 			op32_in_reg <=0;
-			flush_in_reg<=0;
+			flush_in_reg <=0;
 			LWORD_OUT <=0;
+			sum_bit_reg <=0;
+			mxr_reg <=0;
 
         end
         else if (tlb_addr_valid & VIRT_ADDR_VALID &  CACHE_READY) begin
@@ -186,6 +201,8 @@ module DTLB
 			amo_in_reg <= AMO_IN;
 			op32_in_reg <= OP32_IN;
 			LWORD_OUT <=LWORD_IN;
+			sum_bit_reg <= SUM_BIT;
+			mxr_reg <= MXR;
         end  
         else
             tlb_flush_reg <=0;    
@@ -211,7 +228,7 @@ module DTLB
             end
             else if(state != IDLE) begin
         		if (DATA_FROM_AXIM_VALID)begin
-        		    if(~pte_v)begin
+        		    if(~pte_v | (~pte_r & pte_w))begin
 						addr_to_axim_valid_reg  <= 0;
 						page_fault_reg 		<= 1;
 						fault_type_reg 		<= op_type_reg;
@@ -219,7 +236,7 @@ module DTLB
         		    end
         		    else if(pte_r | pte_x)begin // some other conditions are there for page fault
 						addr_to_axim_valid_reg    <= 0;
-        			if(~pte_a | ((op_type_reg == 2) & ~pte_d))begin
+        			if(~pte_a | ((op_type_reg == 2) & ~pte_d) | (pte_u & (curr_prev_reg == smode) & ~sum_bit_reg) | (~pte_u & (curr_prev_reg == umode)) | (~pte_r & ~mxr_reg) | ((op_type_reg == 2) & ~pte_w))begin
         			   page_fault_reg <= 1;
         			   fault_type_reg <= op_type_reg;
         			   state          <= IDLE;
@@ -261,7 +278,7 @@ module DTLB
             	valid_wren             <= 0;
 	end
 	else if(DATA_FROM_AXIM_VALID)begin
-	     if(pte_v & (pte_r | pte_x) & pte_a & ((op_type_reg != 2) | pte_d))begin // all conditions upto IDLE state of above block
+	     if(pte_v & (pte_r | pte_x) & pte_a & ((op_type_reg != 2) | pte_d) & (~pte_u | (curr_prev_reg != smode) | sum_bit_reg) & (pte_u | (curr_prev_reg != umode)) & (pte_r | mxr_reg) & ((op_type_reg != 2) | pte_w))begin // all conditions upto IDLE state of above block
 		pa_mem_wren    <= 1;
             	pa_mem_waddr   <= pa_mem_raddr;
             	tag_mem_wren   <= 1;
@@ -269,10 +286,10 @@ module DTLB
             	valid_wren     <= 1;
             	valid_waddr    <= valid_raddr;
             	tag_mem_data_in<= virt_addr_reg[(PAGE_OFFSET_WIDTH+TLB_ADDR_WIDTH) +: ((LEVELS*VPN_LEN)-TLB_ADDR_WIDTH)];
-            	if     (state == ITER_1) {pa_mem_data_in,dirty_in} <= {pte_ppn2,vpn1,vpn0,pte_d};
-		else if(state == ITER_2) {pa_mem_data_in,dirty_in} <= {pte_ppn2,pte_ppn1,vpn0,pte_d};
-		else if(state == ITER_3) {pa_mem_data_in,dirty_in} <= {pte_ppn2,pte_ppn1,pte_ppn0,pte_d};
-		else 			 {pa_mem_data_in,dirty_in} <= 0;
+            	if     (state == ITER_1) {pa_mem_data_in,pte_d_in,pte_u_in,pte_w_in,pte_r_in,pte_x_in} <= {pte_ppn2,vpn1,vpn0,pte_d,pte_u,pte_w,pte_r,pte_x};
+		else if(state == ITER_2) {pa_mem_data_in,pte_d_in,pte_u_in,pte_w_in,pte_r_in,pte_x_in} <= {pte_ppn2,pte_ppn1,vpn0,pte_d,pte_u,pte_w,pte_r,pte_x};
+		else if(state == ITER_3) {pa_mem_data_in,pte_d_in,pte_u_in,pte_w_in,pte_r_in,pte_x_in} <= {pte_ppn2,pte_ppn1,pte_ppn0,pte_d,pte_u,pte_w,pte_r,pte_x};
+		else 			 {pa_mem_data_in,pte_d_in,pte_u_in,pte_w_in,pte_r_in,pte_x_in} <= 0;
 	     end
 	     else begin
 				pa_mem_wren            <= 0;
@@ -290,7 +307,7 @@ module DTLB
 
     MEMORY  
     #(
-        .data_width(PPN_LEN+1),//plus 1 for dirty bit
+        .data_width(PPN_LEN+5),//plus 5 for d u w r x bits
         .address_width(TLB_ADDR_WIDTH),
         .depth(TLB_DEPTH)
         )
@@ -300,8 +317,8 @@ module DTLB
         .PORTA_WREN(pa_mem_wren),
         .PORTA_RADDR(pa_mem_raddr),
         .PORTA_WADDR(pa_mem_waddr),
-        .PORTA_DATA_IN({pa_mem_data_in,dirty_in}),
-        .PORTA_DATA_OUT({pa_mem_data_out,dirty_out})
+        .PORTA_DATA_IN({pa_mem_data_in,pte_d_in,pte_u_in,pte_w_in,pte_r_in,pte_x_in}),
+        .PORTA_DATA_OUT({pa_mem_data_out,pte_d_out,pte_u_out,pte_w_out,pte_r_out,pte_x_out})
 
         );
     MEMORY  
@@ -347,7 +364,7 @@ module DTLB
 
     assign tlb_hit        = ((tag_mem_data_out == virt_addr_reg[(PAGE_OFFSET_WIDTH+TLB_ADDR_WIDTH) +: ((3*VPN_LEN)-TLB_ADDR_WIDTH)]) & valid_out);
 
-    assign page_fault_comb= (~translation_off & tlb_hit & (op_type_reg == 2) & ~dirty_out);
+    assign page_fault_comb= (~translation_off & tlb_hit & (op_type_reg == 2) & ~pte_d_out) | (~translation_off & tlb_hit & pte_u_out & (curr_prev_reg == smode) & ~sum_bit_reg) | (~pte_u_out & (curr_prev_reg == umode)) | (~translation_off & tlb_hit & (op_type_reg == 2) & ~pte_w_out) | (~translation_off & tlb_hit & pte_x_out & ~pte_r_out & ~mxr_reg);
     assign PAGE_FAULT     = page_fault_reg | page_fault_comb;
     assign FAULT_TYPE     = page_fault_comb ? 2: fault_type_reg;
 
