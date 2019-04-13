@@ -463,7 +463,7 @@ module PIPELINE #(
             BYTE_ENB_TO_CACHE = 4'b0000;  
     end
       
-    reg       flush_e_i=0;
+    reg       flush_e_i;
     reg [1:0] rs1_type_fb;
     reg [1:0] rs2_type_fb;
 
@@ -471,17 +471,17 @@ module PIPELINE #(
     assign rs2_count = (flush_e|flush_e_i)?0:(rs2_type_fb==2'b10 ? 5:(rs2_type_fb==2'b00 ?1:0))     ;
 
  
-    integer dump_file;
-    initial dump_file=$fopen("rtllog.log","w");
-    integer read_file;
-    initial read_file=$fopen("vmruns/pc_log.txt","r");
-    integer wb_file;
-    initial wb_file=$fopen("vmruns/wb_log.txt","r");
-    string values; 
-    string wb_datas; 
-    reg [63:0] PC_VAL;
-    always@(*)
-        emu_wb = wb_datas.atohex();
+//    integer dump_file;
+//    initial dump_file=$fopen("rtllog.log","w");
+//    integer read_file;
+//    initial read_file=$fopen("vmruns/pc_log.txt","r");
+//    integer wb_file;
+//    initial wb_file=$fopen("vmruns/wb_log.txt","r");
+//    string values; 
+//    string wb_datas; 
+//    reg [63:0] PC_VAL;
+//    always@(*)
+//        emu_wb = wb_datas.atohex();
     always@(posedge CLK)
     begin
 //        if(~exstage.satp_update & ~(exstage.PAGE_FAULT_INS) & ~(exstage.PROC_IDLE) & stall_enable_fb_ex & |pc_fb_ex & ~fence_fb_ex) begin

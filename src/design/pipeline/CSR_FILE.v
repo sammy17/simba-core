@@ -294,7 +294,17 @@ module CSR_FILE (
 
     end
     
-    
+    always@(posedge CLK) begin
+        if(RST) begin
+            satp_update <=0;
+        end
+        else if(!PROC_IDLE & csr_op & (CSR_ADDRESS==satp)) begin
+            satp_update <= 1;
+        end
+        else if (!(PROC_IDLE)) begin
+            satp_update <=0;
+        end
+    end
     //Handling Privilage System instruction and Read from CSR Registers
     always@(*)
     begin
@@ -767,7 +777,7 @@ module CSR_FILE (
             misa_reg<= (64'b101000001000100000001 | (1<<63)); 
              err_addr <= 0;  
              uepc_reg <=0;                                                                                                       
-             satp_update <=0;                                                                                                    
+                                                                                                                
             pmpaddr0_r <=0;
             pmpaddr1_r <=0;
             pmpaddr2_r <=0;
@@ -783,7 +793,7 @@ module CSR_FILE (
       
             //external interupts >> software interupts >> timer interupts >> synchornous trapsL:
              
-            satp_update <=0;
+            
             err_addr <=ERR_ADDR;
             minsret_reg <= minsret_reg + 1'b1   ;
             if(minsret_reg%10000==0) begin
@@ -1007,7 +1017,7 @@ module CSR_FILE (
                     satp           :    begin
                                              {   smode_reg,asid,ppn}          <=  input_data_final            ;
 
-                                             satp_update <=1;
+                                             
                                         end
                     mstatus        :    {sxl,uxl,TSR,TW,TVM,
                                         mxr,sum,mprv,fs,mpp,
@@ -1063,7 +1073,8 @@ module CSR_FILE (
                     default        :    ; 
                 endcase
             end
-    end
+        end
+        
         
      
     end

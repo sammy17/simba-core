@@ -233,14 +233,14 @@ module RISCV_PROCESSOR#(
      reg                                stop_dat_cache ;
      reg                                stop_ins_cache ;
      integer                            counter ;
-     reg                                peri_start;
-     reg        [31:0]                  addr_to_peri;
-     reg                                control_to_peri;
-     reg        [31:0]                  data_to_peri;
-     wire       [31:0]                  data_from_peri;
-     wire                               peri_complete;
-     reg                                peri_done ;
-     reg        [3 :0]                  wstrb_to_peri;
+     // reg                                peri_start;
+     // reg        [31:0]                  addr_to_peri;
+     // reg                                control_to_peri;
+     // reg        [31:0]                  data_to_peri;
+     // wire       [31:0]                  data_from_peri;
+     // wire                               peri_complete;
+     // reg                                peri_done ;
+     // reg        [3 :0]                  wstrb_to_peri;
      wire       [4:0]                   amo_op;
      wire  [address_width-1: 0]           vaddr_to_dcache;
 	 wire lword_to_dtlb;
@@ -354,7 +354,7 @@ module RISCV_PROCESSOR#(
     .CONTROL_DATA_CACHE(control_from_proc_dat), 
     .ADDR_TO_DATA_CACHE(addr_from_proc_dat),
     .DATA_TO_DATA_CACHE(data_from_proc_dat),
-    .DATA_TO_PROC((p_flag)? data_from_peri: data_to_proc_dat),
+    .DATA_TO_PROC(data_to_proc_dat),
     .CACHE_READY_DATA(cache_ready_dat & !stop_dat_cache & dtlb_ready_d4),
     .EX_PC(ex_pc),
     .BRANCH(branch),
@@ -438,19 +438,19 @@ module RISCV_PROCESSOR#(
     
     always@(posedge CLK)
     begin
-        if (~RSTN)
-        begin
-            peri_start<=0;
-            control_to_peri <=0;
-            counter <=0;
+    //     if (~RSTN)
+    //     begin
+    //         peri_start<=0;
+    //         control_to_peri <=0;
+    //         counter <=0;
             stop_ins_cache<=0;
             stop_dat_cache<=0;
-            peri_done <=0;
-            p_flag <=0;
-            counter <=0;
+    //         peri_done <=0;
+    //         p_flag <=0;
+    //         counter <=0;
 
             
-        end
+        // end
     end
     always@(posedge CLK) begin
         if((control_from_proc_dat ==2 )& (addr_from_proc_dat== EXT_FIFO_ADDRESS) & dtlb_ready & cache_ready_ins & cache_ready_ins & dtlb_ready & dtlb_ready_d4) begin
@@ -704,9 +704,9 @@ myip_v1_0_M00_AXI # (
 
     always@(posedge CLK) begin
         if(~RSTN) begin
-            dtlb_ready_d2 <=0; 
-            dtlb_ready_d3 <=0; 
-            dtlb_ready_d4 <=0; 
+            dtlb_ready_d2 <=1; 
+            dtlb_ready_d3 <=1; 
+            dtlb_ready_d4 <=1; 
         end
         if(cache_ready_dat) begin
             dtlb_ready_d2 <= dtlb_ready;     
@@ -834,9 +834,9 @@ ITLB
 		.PERI_WORD_ACCESS(PERI_WORD_ACCESS),
 		.DATA_FROM_PERI(DATA_FROM_PERI),
 		.DATA_FROM_PERI_READY(DATA_FROM_PERI_READY),
-		.DATA_TO_PERI(DATA_TO_PERI),
+//		.DATA_TO_PERI(DATA_TO_PERI),
 		.WRITE_TO_PERI(WRITE_TO_PERI),
-		.PERI_WORD_ACCESS(PERI_WORD_ACCESS),
+//		.PERI_WORD_ACCESS(PERI_WORD_ACCESS),
 		.WSTRB_TO_PERI(WSTRB_TO_PERI )
     );
    
@@ -845,7 +845,7 @@ ITLB
 		.ADDR_TO_PERI_VALID(ADDR_TO_PERI_VALID),
 		.ADDR_TO_PERI(ADDR_TO_PERI),
 		.DATA_TO_PERI(DATA_TO_PERI),
-		.PERI_WORD_ACCESS(PERI_WORD_ACCESS),
+//		.PERI_WORD_ACCESS(PERI_WORD_ACCESS),
 		.WRITE_TO_PERI(WRITE_TO_PERI),
 		.PERI_WORD_ACCESS(PERI_WORD_ACCESS),
 		.DATA_FROM_PERI(DATA_FROM_PERI),
