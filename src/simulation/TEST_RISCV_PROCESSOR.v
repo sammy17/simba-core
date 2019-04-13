@@ -373,10 +373,13 @@ axi_interconnect_0_new master_interconnect (
    ) uut (
        // Standard inputs
        .CLK(CLK),
-       .RSTN(m00_axi_areset_out_n),
+       .RSTN(RSTN),
        .peripheral_interface_aclk(CLK),
        // Output address bus from Instruction Cache to Memory               
        //axi interface
+       .MEIP(0),
+       .MSIP(0),
+       .MTIP(0),
        .m00_axi_aclk(m00_axi_aclk),
        .m00_axi_aresetn(m00_axi_aresetn),
        .m00_axi_awid(m00_axi_awid),
@@ -506,7 +509,7 @@ axi_interconnect_0_new master_interconnect (
     initial begin
         CLK  = 0;
         RSTN = 0;
-        #20;
+        #200;
         RSTN = 1;
         
 
@@ -576,14 +579,14 @@ axi_interconnect_0_new master_interconnect (
         .S_AXI_RREADY(M00_AXI_RREADY)
     );
   
-    reg [7:0] byte_ram[0: (1<<26)-1][0:3];
+    reg [7:0] byte_ram[0: (1<<24)-1][0:3];
 
-    bit [31:0] word_ram[0: (1<<26)-1];
+    bit [31:0] word_ram[0: (1<<24)-1];
 
     always@(negedge RSTN)
     begin
         $readmemh("data_hex.txt",word_ram);
-        for (int j=0; j < (1<<26); j=j+1)
+        for (int j=0; j < (1<<24); j=j+1)
         begin
             for (int i=0; i<4; i=i+1)
             begin

@@ -1,10 +1,10 @@
  `timescale 1 ps  /  1 ps
 module Dcache
     #(
-        parameter data_width    = 32                                            ,
-        parameter address_width = 32                                            ,
-        parameter block_size    = 32                                             ,
-        parameter cache_depth   = 512                                           ,
+        parameter data_width    = 64                                            ,
+        parameter address_width = 64                                            ,
+        parameter block_size    = 4                                             ,
+        parameter cache_depth   = 256                                           ,
         localparam line_width   = $clog2(cache_depth)                           ,
         localparam offset_width = $clog2(data_width*block_size  /8)               ,
         localparam tag_width    = address_width - line_width -  offset_width    ,
@@ -37,7 +37,7 @@ module Dcache
         output DCACHE_flusing,
         input [address_width-1:0] VIRT_ADDR,
 		input LOAD_WORD,
-		output PERI_ACCESS,
+		input  PERI_ACCESS,
 		output reg ADDR_TO_PERI_VALID,
 		output reg [address_width-1:0] ADDR_TO_PERI,
 		output reg [data_width -1:0] DATA_TO_PERI,
@@ -280,7 +280,6 @@ module Dcache
 			peri_access_d1 <=0;
 			peri_access_d2 <=0;
 			peri_access_d3 <=0;
-            WSTRB_TO_PERI <= 0;
         end
 		else if (cache_ready & ADDR_VALID) begin
             addr_d0  <= ADDR;
@@ -358,12 +357,8 @@ module Dcache
             addr_to_l2_valid  <=0;
             addr_to_l2        <=0;
             flag              <=0;
-			ADDR_TO_PERI_VALID <=0;
-			ADDR_TO_PERI <=0;
-			PERI_WORD_ACCESS <=0;
-            DATA_TO_L2_VALID <=0;
-            peri_busy <=0;
-
+		
+            
         end
         else if (~cache_ready  & ~peri_access_d3)
         begin
@@ -387,25 +382,33 @@ module Dcache
             end
 
         end
-		else if (~cache_ready & peri_access_d3 & ~peri_busy ) begin
-			ADDR_TO_PERI_VALID <=1;
-			ADDR_TO_PERI       <= addr_d3;
-			PERI_WORD_ACCESS   <= load_word_d3;
-			DATA_TO_PERI	   <= data_d3;
-			WRITE_TO_PERI 	   <= (control_d3 ==2'b10);
-			WSTRB_TO_PERI      <= wstrb_d3;
+		
+        if (RST) begin
+            ADDR_TO_PERI_VALID <=0;
+            ADDR_TO_PERI <=0;
+            PERI_WORD_ACCESS <=0;
+            DATA_TO_L2_VALID <=0;
+            peri_busy <=0;
+            WSTRB_TO_PERI <= 0;
+        end
+        else if (~cache_ready & peri_access_d3 & ~peri_busy ) begin
+            ADDR_TO_PERI_VALID <=1;
+            ADDR_TO_PERI       <= addr_d3;
+            PERI_WORD_ACCESS   <= load_word_d3;
+            DATA_TO_PERI       <= data_d3;
+            WRITE_TO_PERI      <= (control_d3 ==2'b10);
+            WSTRB_TO_PERI      <= wstrb_d3;
             peri_busy          <=1;
-		end
+        end
         else if(DATA_FROM_PERI_READY) begin
             peri_busy <=0;
             WRITE_TO_PERI      <=0;
             ADDR_TO_PERI_VALID <=0;
         end
-		else begin
-			WRITE_TO_PERI      <=0;
-			ADDR_TO_PERI_VALID <=0;
-		end
-
+        else begin
+            WRITE_TO_PERI      <=0;
+            ADDR_TO_PERI_VALID <=0;
+        end
 
         if(RST)
         begin

@@ -360,47 +360,53 @@ rv64m
              
              if (JUMP_FINAL)
              begin
-                FLUSH               <=    (PC_ID_FB!=JUMP_ADDR) | FENCE| SFENCE_in |satp_update;
                 flush_internal      <=    (PC_ID_FB!=JUMP_ADDR) | FENCE  | SFENCE_in|satp_update;
              end
              else if (STALL_ENABLE_EX & !flush_internal & cache_ready_ex2)
              begin
-                FLUSH               <=    PC_ID_FB!=PC_FB_EX+4;
                 flush_internal      <=    PC_ID_FB!=PC_FB_EX+4;
              end
-             
+             else if (counter_2 == 3'd5)
+             begin
+                flush_internal<=1'b0;
+             end
+             ////////////////////////////
              if (FLUSH)
              begin
                 counter_1    <= counter_1 + 1; 
              end
+             else 
+             begin
+                counter_1 <=3'd0;
+             end
+             ///////////////////////////////////////////
              if (flush_internal)
              begin
                 counter_2    <= counter_2 + 1;
              end
-             if (counter_1 == 3'd3)
-             begin
-                FLUSH<=1'b0;
-             end
-             if (counter_2 == 3'd5)
-             begin
-                flush_internal<=1'b0;
-             end
-             
-             if (!FLUSH)
-             begin
-                counter_1 <=3'd0;
-             end
-             if (!flush_internal)
+             else 
              begin
                 counter_2 <= 3'd0;
              end
+             ///////////////////////////////////
+             if (JUMP_FINAL)
+             begin
+                FLUSH               <=    (PC_ID_FB!=JUMP_ADDR) | FENCE| SFENCE_in |satp_update;
+             end
+             else if (STALL_ENABLE_EX & !flush_internal & cache_ready_ex2)
+             begin
+                FLUSH               <=    PC_ID_FB!=PC_FB_EX+4;
+             end
+             else if (counter_1 == 3'd3)
+             begin
+                FLUSH<=1'b0;
+             end
+             
+             
+             
+           
         end
-        if(RST) begin 
-            crd<=0;
-        end
-        else begin
-            crd<= CACHE_READY;
-        end
+      
     end
 
     always@(*)
