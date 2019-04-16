@@ -5,7 +5,7 @@ module Icache
         parameter address_width = 32                                            ,
         parameter block_size    = 32                                             ,
         parameter cache_depth   = 512                                           ,
-        parameter addr_init_val = 32'h0000_0000                                 ,
+        parameter addr_init_val = 32'h8000_0000                                 ,
         localparam line_width   = $clog2(cache_depth)                           ,
         localparam offset_width = $clog2(data_width*block_size  /8)               ,
         localparam tag_width    = address_width - line_width -  offset_width    ,
