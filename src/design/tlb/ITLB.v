@@ -176,7 +176,7 @@ module ITLB
             ACCESS_FAULT            <=0;
         end
         else if (~tlb_addr_valid & ~valid_wren )begin   //check whether cache ready and make sure flag goes 0 one cycle before data get written
-            if(~addr_to_axim_valid_reg & (state == IDLE) & VIRT_ADDR_VALID )begin
+            if(~addr_to_axim_valid_reg & (state == IDLE)  )begin
                 addr_to_axim_valid_reg    <= 1;
                 addr_to_axim_reg          <= {8'd0,satp_ppn,vpn2,3'd0}; // calculate the AXI address from SATP
                 state                     <= ITER_1;
@@ -190,7 +190,7 @@ module ITLB
         		    end
         		    else if(pte_x)begin // some other conditions are there for page fault
         			addr_to_axim_valid_reg    <= 0;
-        			if(~pte_a | (pte_u & (curr_prev_reg == smode) & ~sum_bit_reg) | (~pte_u & (curr_prev_reg == umode))begin
+        			if(~pte_a | (pte_u & (curr_prev_reg == smode) & ~sum_bit_reg) | (~pte_u & (curr_prev_reg == umode)))begin
         			   page_fault_reg <= 1;
         			   state          <= IDLE;
         			end

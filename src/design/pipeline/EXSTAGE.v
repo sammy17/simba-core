@@ -83,7 +83,8 @@ module EXSTAGE(
     input [63:0] PC_EX_MEM1,
     input SFENCE_in,
     output SFENCE,
-    output LOAD_WORD
+    output LOAD_WORD,
+    input CACHE_READY_INS
 
      
     );
@@ -468,7 +469,7 @@ rv64m
     assign TYPE_OUT             = type_out & {2{!flush_internal}} & {2{!priv_jump}}       & {2{!satp_update}}                                   ;
     assign FLUSH_I              = flush_internal                                                                            ;
     assign EXSTAGE_STALLED      = ((ALU_CNT==alu_mstd) & !rv32m_ready ) & !flush_internal      & !satp_update              ;
-    assign FENCE_OUT            = (FENCE) & !flush_internal ;
+    assign FENCE_OUT            = (FENCE) & !flush_internal & CACHE_READY_INS;
     assign AMO_OP_out         = AMO_OP_in & {5{!flush_internal}};
     assign OP_32_out       =  OPS_32 & !flush_internal;
     assign SFENCE          = SFENCE_in & !flush_internal;

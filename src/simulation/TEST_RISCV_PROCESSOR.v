@@ -534,7 +534,7 @@ axi_interconnect_0_new master_interconnect (
         .S_AXI_ACLK(M00_AXI_ACLK),
         .S_AXI_ARESETN(M00_AXI_ARESET_OUT_N),
         .S_AXI_AWID(M00_AXI_AWID),
-        .S_AXI_AWADDR(M00_AXI_AWADDR-32'h8000_0000),
+        .S_AXI_AWADDR(M00_AXI_AWADDR-32'h3000_0000),
         .S_AXI_AWLEN(M00_AXI_AWLEN),
         .S_AXI_AWSIZE(M00_AXI_AWSIZE),
         .S_AXI_AWBURST(M00_AXI_AWBURST),
@@ -558,7 +558,7 @@ axi_interconnect_0_new master_interconnect (
         .S_AXI_BVALID(M00_AXI_BVALID),
         .S_AXI_BREADY(M00_AXI_BREADY),
         .S_AXI_ARID(M00_AXI_ARID),
-        .S_AXI_ARADDR(M00_AXI_ARADDR-32'h8000_0000),
+        .S_AXI_ARADDR(M00_AXI_ARADDR-32'h3000_0000),
         .S_AXI_ARLEN(M00_AXI_ARLEN),
         .S_AXI_ARSIZE(M00_AXI_ARSIZE),
         .S_AXI_ARBURST(M00_AXI_ARBURST),
@@ -579,14 +579,14 @@ axi_interconnect_0_new master_interconnect (
         .S_AXI_RREADY(M00_AXI_RREADY)
     );
   
-    reg [7:0] byte_ram[0: (1<<24)-1][0:3];
+    reg [7:0] byte_ram[0: (1<<27)-1][0:3];
 
-    bit [31:0] word_ram[0: (1<<24)-1];
+    bit [31:0] word_ram[0: (1<<27)-1];
 
     always@(negedge RSTN)
     begin
         $readmemh("data_hex.txt",word_ram);
-        for (int j=0; j < (1<<24); j=j+1)
+        for (int j=0; j < (1<<26); j=j+1)
         begin
             for (int i=0; i<4; i=i+1)
             begin

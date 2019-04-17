@@ -233,7 +233,7 @@ module PIPELINE #(
         .TYPE_OUT           (type_out)                              ,
         .EXSTAGE_STALLED    (EXSTAGE_STALLED)                       , //mstd
         .LDST_TYPE(op_type_ex_ex2),
-        //   .CACHE_READY_DATA   (CACHE_READY_DATA)             ,
+        .CACHE_READY_INS   (CACHE_READY)             ,
         .FLUSH(flush_e)                                             ,
         .FLUSH_I(flush_internal)                                    ,              
         .PREDICTED(PREDICTED),

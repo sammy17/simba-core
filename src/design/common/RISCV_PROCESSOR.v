@@ -22,9 +22,9 @@
 module RISCV_PROCESSOR#(
     parameter instruction_width     = 32                                          ,
     parameter address_width         = 64                                           ,
-    parameter block_size            = 4                                           ,
-    parameter cache_depth           = 256                                          ,
-    parameter block_size_dat        = 2,
+    parameter block_size            = 16                                           ,
+    parameter cache_depth           = 1024                                          ,
+    parameter block_size_dat        = 16,
     parameter l2_delay_read         = 10                                           ,
     localparam line_width           = $clog2(cache_depth)                          ,
     localparam offset_width         = $clog2(instruction_width*block_size/8 )               ,
@@ -752,7 +752,9 @@ myip_v1_0_M00_AXI # (
 	.AMO_OUT(amo_to_dcache_from_dtlb),
     .VIRT_ADDR_OUT(vaddr_to_dcache),
 	.LWORD_IN(lword_to_dtlb),
-	.LWORD_OUT(lword_to_dcache)
+	.LWORD_OUT(lword_to_dcache),
+	.SUM_BIT(1),
+	.MXR(1)
     );
 
 ITLB
@@ -779,9 +781,8 @@ ITLB
     .SATP(SATP),
     .CURR_PREV(CURR_PREV),
     .MPP(MPP),
-    .OFF_TRANSLATION_FROM_TLB(1'b0)
-            
-            
+    .OFF_TRANSLATION_FROM_TLB(1'b0),
+	.SUM_BIT(1)
     );
 	wire peri_access;
 	assign peri_access = ((addr_to_dat_cache_from_tlb< RAM_LOW_ADDR) | (addr_to_dat_cache_from_tlb>RAM_HIGH_ADDR)) & dtlb_ready ;

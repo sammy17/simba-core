@@ -243,7 +243,7 @@
 	//I/O Connections. Write Address (AW)
 	assign M_AXI_AWID	= 'b0;
 	//The AXI address is a concatenation of the target base address + active offset range
-	assign M_AXI_AWADDR	= axi_awaddr-32'h5000_0000;;
+	assign M_AXI_AWADDR	= axi_awaddr;
 	//Burst LENgth is number of transaction beats, minus 1
 	assign M_AXI_AWLEN	= C_M_AXI_BURST_LEN - 1;
 	//Size should be C_M_AXI_DATA_WIDTH, in 2^SIZE bytes, otherwise narrow bursts are used
@@ -268,7 +268,7 @@
 	assign M_AXI_BREADY	= axi_bready;
 	//Read Address (AR)
 	assign M_AXI_ARID	= 'b0;
-	assign M_AXI_ARADDR	=  axi_araddr-32'h5000_0000;
+	assign M_AXI_ARADDR	=  axi_araddr;
 	//Burst LENgth is number of transaction beats, minus 1
 	assign M_AXI_ARLEN	= C_M_AXI_BURST_LEN - 1;
 	//Size should be C_M_AXI_DATA_WIDTH, in 2^n bytes, otherwise narrow bursts are used
@@ -373,7 +373,7 @@
 		end                                                              
 		else if (~axi_awvalid  & initiate_write)                             
 		begin                                                            
-			axi_awaddr <= addr_w;                   
+			axi_awaddr <= addr_w-32'h5000_0000;                   
 		end                                                              
 		else                                                               
 			axi_awaddr <= axi_awaddr;                                        
@@ -537,7 +537,7 @@
 		end                                                            
 		else if (~axi_arvalid && initiate_read)                           
 		begin                                                          
-			axi_araddr <= raddr;                 
+			axi_araddr <= raddr-32'h5000_0000;;                 
 		end                                                            
 		else                                                             
 			axi_araddr <= axi_araddr;                                      

@@ -796,7 +796,7 @@ module CSR_FILE (
             
             err_addr <=ERR_ADDR;
             minsret_reg <= minsret_reg + 1'b1   ;
-            if(minsret_reg%10000==0) begin
+            if(minsret_reg%100000==0) begin
                 $display(minsret_reg, " %h %h",PC,INS_FB_EX);
             end
                     if(exception) begin 
