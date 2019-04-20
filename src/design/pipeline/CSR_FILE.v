@@ -31,10 +31,10 @@ module CSR_FILE (
     input       [63:0]  RS1_DATA        ,
     input       [ 4:0]  ZIMM            ,
     output reg  [63:0]  OUTPUT_DATA     ,
-    output reg  [63:0]  PRIV_JUMP_ADD   ,
+    (*mark_debug = "true" *)  output reg  [63:0]  PRIV_JUMP_ADD   ,
     
     input               PROC_IDLE       ,
-    output              PRIV_JUMP       ,
+    (*mark_debug = "true" *)  output              PRIV_JUMP       ,
     
     //external interupts >> software interupts >> timer interupts >> synchornous traps
     
@@ -43,7 +43,7 @@ module CSR_FILE (
     input               MSIP            ,   //machine software interupt pending, from external hart
     
     input               SEIP            ,   //supervisor external interupt pending
-    input               STIP            ,   //supervisor timer interupt pending
+     (*mark_debug = "true" *) input               STIP            ,   //supervisor timer interupt pending
     input               SSIP            ,   //supervisor software interupt pending, from external hart
     
     input               UEIP            ,   //user external interupt pending
@@ -78,14 +78,16 @@ module CSR_FILE (
     input [63:0]   PC_EX_MEM1,
     input [63:0]   JUMP_ADD,
     input [31:0] INS_FB_EX,
-    output reg satp_update
+    output reg satp_update,
+    output TIME_INT_WAIT
                       
     );  
     
     `include "PipelineParams.vh"
     
     //machine mode specific
-    reg     heip,seip,ueip,htip,stip,utip,hsip,ssip,usip                ;
+    reg stip;
+    reg     heip,seip,ueip,htip,utip,hsip,ssip,usip                ;
     reg     meie,heie,seie,ueie,mtie,htie,stie,utie,msie,hsie,ssie,usie ;
     reg mxr,sum,mprv,spp,mpie,spie,upie,m_ie,s_ie,u_ie           ;
     reg     [1      :0]     mpp                                         ;
@@ -171,7 +173,7 @@ module CSR_FILE (
     // supervisor mode wires
     wire    [63 : 0] sstatus_r   =  {sd,29'b0,uxl,12'b0,mxr,sum,1'b0,2'b0,fs,2'b0,2'b0,spp,1'b0,1'b0,spie,upie,1'b0,1'b0,s_ie,u_ie}  ;    
     wire    [63 : 0] stvec_r     = {st_base,st_mode}                                            ;
-    wire    [63 : 0] sip_r       = {52'b0,2'b0,1'b0,seip,ueip,1'b0,1'b0,stip,utip,1'b0,1'b0,ssip,usip}               ;  //hardwired 0 for hypervisor specs
+    wire    [63 : 0] sip_r       = {52'b0,2'b0,1'b0,seip,ueip,1'b0,1'b0,STIP,utip,1'b0,1'b0,ssip,usip}               ;  //hardwired 0 for hypervisor specs
     wire    [63 : 0] sie_r       = {52'b0,1'b0,1'b0,seie,ueie,1'b0,1'b0,stie,utie,1'b0,1'b0,ssie,usie}               ;  
     wire    [63 : 0] sedeleg_r   = sedeleg_reg                                                  ;
     wire    [63 : 0] sideleg_r   = sideleg_reg                                                  ;
@@ -434,7 +436,7 @@ module CSR_FILE (
             interrupt     =   1'b1     ;    
             exception     =   1'b0     ;
         end
-        else if( mtie & MTIP) begin
+        else if( mtie & MTIP & m_ie) begin
             ecode_reg     =   31'd7    ;
             interrupt     =   1'b1     ;
             exception     =   1'b0     ;
@@ -450,7 +452,7 @@ module CSR_FILE (
             interrupt     =   1'b1     ;
             exception     =   1'b0     ;    
         end
-        else if( stie & STIP) begin
+        else if( stie & STIP & s_ie) begin
             ecode_reg     =   31'd5    ;
             interrupt     =   1'b1     ;
             exception     =   1'b0     ; 
@@ -704,9 +706,9 @@ module CSR_FILE (
         if(RST) begin
              mcycle_reg <=0;  
         end  
-        else if(!PROC_IDLE & (CSR_ADDRESS==mcycle) & !(interrupt_final | exception)) begin
-             mcycle_reg   <= input_data_final        ;
-        end
+        // else if(!PROC_IDLE & (CSR_ADDRESS==mcycle) & !(interrupt_final | exception) & csr_op) begin
+        //      mcycle_reg   <= input_data_final        ;
+        // end
         else begin
              mcycle_reg   <= mcycle_reg + 1'b1       ;
         end
@@ -951,7 +953,7 @@ module CSR_FILE (
             end
             else if( CSR_CNT == sys_sret) begin
                 curr_prev <= spp;
-                mpie     <= 1'b1;
+                spie     <= 1'b1;
                 s_ie     <= spie;
             
 
@@ -1080,6 +1082,7 @@ module CSR_FILE (
     end
     
     assign  PRIV_JUMP       = exception | (CSR_CNT==sys_uret) | (CSR_CNT==sys_sret) | (CSR_CNT==sys_mret) | (interrupt_final)  ;
+    assign TIME_INT_WAIT    = STIP & stie & s_ie;
     assign  MPP             =mpp;
     assign  CURR_PREV       =curr_prev;
     assign SATP = satp_r;
