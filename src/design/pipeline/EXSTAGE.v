@@ -29,8 +29,8 @@ module EXSTAGE(
     input           [63:0]  COMP2_U                 ,
     input           [63:0]  JUMP_BUS1               ,
     input           [63:0]  JUMP_BUS2               ,  
-    input           [63:0]  A                       ,
-    input           [63:0]  B                       ,
+    (* mark_debug = "true" *)  input           [63:0]  A                       ,
+    (* mark_debug = "true" *)  input           [63:0]  B                       ,
     input signed    [63:0]  A_signed                ,
     input signed    [63:0]  B_signed                ,
     input           [63:0]  PC_FB_EX                ,
@@ -46,7 +46,7 @@ module EXSTAGE(
     input           [ 4:0]  ZIMM                    ,
     input                   CACHE_READY             ,
     input           [ 1:0]  TYPE_IN                 ,
-    input                   PROC_IDLE               ,
+     (* mark_debug = "true" *) input                   PROC_IDLE               ,
     
     input                   MEIP                    ,   //machine external interupt pending
     input                   MTIP                    ,   //machine timer interupt pending
@@ -66,7 +66,7 @@ module EXSTAGE(
     output                  FENCE_OUT             ,
     input        [4:0]      AMO_OP_in,
     output        [4:0]      AMO_OP_out,
-    input        [31:0]     INS_FB_EX,
+   (* mark_debug="true" *) input        [31:0]     INS_FB_EX,
     input                   ILEGAL,
     input                   OPS_32,
     output                  OP_32_out,
@@ -81,15 +81,15 @@ module EXSTAGE(
     output     [1:0]         CURR_PREV,
     output   [63:0]     SATP,
     input [63:0] PC_EX_MEM1,
-    input SFENCE_in,
-    output SFENCE,
+    (* mark_debug="true" *) input SFENCE_in,
+    (* mark_debug="true" *) output SFENCE,
     output LOAD_WORD,
     input CACHE_READY_INS
 
      
     );
     //     reg        comp_out;
-     wire [63:0] wb_data;
+    (* mark_debug = "true" *) wire [63:0] wb_data;
 
     `include "PipelineParams.vh"
     reg load_mis_al;
@@ -107,7 +107,7 @@ module EXSTAGE(
     wire [63:0] rv64m_out           ;
     wire rv32ready;
     wire rv64ready;
-        wire        rv32m_ready = rv32ready|rv64ready        ;
+    wire        rv32m_ready = rv32ready|rv64ready        ;
 
     wire [63:0] csr_out             ;
     wire [63:0] priv_jump_add       ; 
@@ -128,7 +128,7 @@ module EXSTAGE(
     wire [63:0] jump_addr_for_non_priv_branch = (JUMP_BUS1+JUMP_BUS2);
  
     wire        comp_out_w          ; 
-    
+    wire TIME_INT_WAIT              ;
     initial
     begin
         for (j=0; j<=15 ; j = j+1)
@@ -222,7 +222,8 @@ module EXSTAGE(
         .PROC_IDLE(PROC_IDLE),
         .PRIV_JUMP(priv_jump),
         .MEIP(MEIP),   
-        .MTIP(MTIP),   
+        .MTIP(1'b0),   
+        .STIP(MTIP),   
         .MSIP(MSIP)  ,
         .RST(RST)   ,
         .ILL_INS(ILEGAL)   ,
@@ -255,7 +256,8 @@ module EXSTAGE(
         .PC_EX_MEM1(PC_EX_MEM1),
         .JUMP_ADD(jump_addr_for_non_priv_branch),
         .INS_FB_EX(INS_FB_EX),
-        .satp_update(satp_update)
+        .satp_update(satp_update),
+        .TIME_INT_WAIT(TIME_INT_WAIT)
 
         );
         
@@ -468,7 +470,7 @@ rv64m
     assign DATA_CACHE_CONTROL   = data_cache_control & {2{!flush_internal}}   & {2{!priv_jump}}           & {2{!satp_update}}                         ;
     assign TYPE_OUT             = type_out & {2{!flush_internal}} & {2{!priv_jump}}       & {2{!satp_update}}                                   ;
     assign FLUSH_I              = flush_internal                                                                            ;
-    assign EXSTAGE_STALLED      = ((ALU_CNT==alu_mstd) & !rv32m_ready ) & !flush_internal      & !satp_update              ;
+    assign EXSTAGE_STALLED      = ((ALU_CNT==alu_mstd) & !rv32m_ready ) & !flush_internal      & !satp_update   & !TIME_INT_WAIT           ;
     assign FENCE_OUT            = (FENCE) & !flush_internal & CACHE_READY_INS;
     assign AMO_OP_out         = AMO_OP_in & {5{!flush_internal}};
     assign OP_32_out       =  OPS_32 & !flush_internal;

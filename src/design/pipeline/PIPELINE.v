@@ -89,7 +89,8 @@ module PIPELINE #(
     output   [1:0]           CURR_PREV,
     output   [63:0]     SATP,
     output              SFENCE,
-    output              LOAD_WORD
+    output              LOAD_WORD,
+    input               COMB_PAGE_FAULT    
     );
     
     `include "PipelineParams.vh"
@@ -154,9 +155,10 @@ module PIPELINE #(
     assign ins_if_id = INS_IF_ID            ;
    reg page_fault_id_fb,page_fault_fb_ex;
    reg access_fault_id_fb,access_fault_fb_ex;
+   reg page_load_fault_reg;
     DECODE_UNIT decode_unit(
         .CLK                (CLK)                           ,
-        .TYPE_MEM3_WB       ((~CACHE_READY_DATA |  PAGE_FAULT_DAT)? 0 : type_mem3_wb)                  ,
+        .TYPE_MEM3_WB       (((~CACHE_READY_DATA |  page_load_fault_reg) )? 0 : type_mem3_wb)                  ,
         .DATA_CACHE_READY   (CACHE_READY_DATA)              ,
         .INS_CACHE_READY    (CACHE_READY)                   ,
         .INSTRUCTION        (ins_if_id)                     ,
@@ -254,10 +256,10 @@ module PIPELINE #(
         .SATP(SATP),
         .CURR_PREV(CURR_PREV),
         .MPP(MPP),
-        .PC_EX_MEM1(pc_mem3_wb),
+        .PC_EX_MEM1(COMB_PAGE_FAULT?pc_ex_mem1: pc_mem3_wb),
         .SFENCE_in(sfence_fb_ex),
         .SFENCE(SFENCE),
-		.LOAD_WORD(LOAD_WORD)
+        .LOAD_WORD(LOAD_WORD)
         );
    
     Multiplexer #(
@@ -493,6 +495,14 @@ module PIPELINE #(
 //
 //        end
            
+        if(!( CACHE_READY && CACHE_READY_DATA && !flush_internal) & PAGE_FAULT_DAT & !COMB_PAGE_FAULT) begin
+            page_load_fault_reg <=1;
+        end
+        else if(( CACHE_READY && CACHE_READY_DATA && !flush_internal)) begin
+            page_load_fault_reg <=0;
+        end
+
+
 
         // cache_ready_data            <= CACHE_READY_DATA             ;//dummy
         if(RST)
@@ -746,7 +756,7 @@ module PIPELINE #(
 
                 access_fault_fb_ex <=0;
                 // access_fault_id_fb<=0;
-                sfence_id_fb <=0;
+                // sfence_id_fb <=0;
                 sfence_fb_ex <=0;
 
             end
@@ -760,14 +770,16 @@ module PIPELINE #(
             alu_ex_mem1              <=      alu_out_wire           ;
             op_type_ex_mem1          <=      op_type_ex_ex2         ;   
 
-            type_mem1_mem2 <= type_ex_mem1; 
-             type_mem2_mem3           <=      type_mem1_mem2               ;
             if(PAGE_FAULT_DAT| ACCESS_FAULT_DAT) begin
-                type_mem3_wb <= 0;
+                type_mem1_mem2 <= 0;
             end
             else begin
-                type_mem3_wb <= type_mem2_mem3;
+                 type_mem1_mem2 <= type_ex_mem1;
             end
+                type_mem2_mem3           <=      type_mem1_mem2               ;
+
+                type_mem3_wb <= type_mem2_mem3;
+
             alu_mem1_mem2            <=      alu_ex_mem1                ;
             alu_mem2_mem3            <=      alu_mem1_mem2              ;
             alu_mem3_wb              <=      alu_mem2_mem3              ;
@@ -789,7 +801,6 @@ module PIPELINE #(
         else if (CACHE_READY_DATA)
         begin       
             
-            type_ex_mem1             <=      0                  ;
             // pc_ex_mem1               <=      0                  ;            
             alu_ex_mem1              <=      0                  ;
             op_type_ex_mem1          <=      0                  ;
@@ -803,14 +814,16 @@ module PIPELINE #(
                 rs2_id_fb                <=      alu_written_back;                                      
           
         
-            type_mem1_mem2            <=      type_ex_mem1              ; 
-             type_mem2_mem3           <=      type_mem1_mem2            ;
-            if(PAGE_FAULT_DAT| ACCESS_FAULT_DAT) begin
-                type_mem3_wb <= 0;
-            end
-            else begin
-                type_mem3_wb <= type_mem2_mem3;
-            end
+            // if(PAGE_FAULT_DAT| ACCESS_FAULT_DAT) begin
+                // type_mem3_wb <= 0;
+            // end
+            // else begin
+            type_ex_mem1             <=      0                  ;
+            type_mem1_mem2           <=      type_ex_mem1;
+            type_mem2_mem3           <=      type_mem1_mem2            ;
+
+            type_mem3_wb             <=      type_mem2_mem3;
+            // end
             alu_mem1_mem2            <=      alu_ex_mem1                ;
             alu_mem2_mem3            <=      alu_mem1_mem2              ;
             alu_mem3_wb              <=      alu_mem2_mem3              ;
