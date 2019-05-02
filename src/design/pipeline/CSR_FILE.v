@@ -31,10 +31,10 @@ module CSR_FILE (
     input       [63:0]  RS1_DATA        ,
     input       [ 4:0]  ZIMM            ,
     output reg  [63:0]  OUTPUT_DATA     ,
-    output reg  [63:0]  PRIV_JUMP_ADD   ,
+    (*mark_debug = "true" *)  output reg  [63:0]  PRIV_JUMP_ADD   ,
     
     input               PROC_IDLE       ,
-    output              PRIV_JUMP       ,
+    (*mark_debug = "true" *)  output              PRIV_JUMP       ,
     
     //external interupts >> software interupts >> timer interupts >> synchornous traps
     
@@ -43,7 +43,7 @@ module CSR_FILE (
     input               MSIP            ,   //machine software interupt pending, from external hart
     
     input               SEIP            ,   //supervisor external interupt pending
-    input               STIP            ,   //supervisor timer interupt pending
+     (*mark_debug = "true" *) input               STIP            ,   //supervisor timer interupt pending
     input               SSIP            ,   //supervisor software interupt pending, from external hart
     
     input               UEIP            ,   //user external interupt pending
@@ -78,14 +78,16 @@ module CSR_FILE (
     input [63:0]   PC_EX_MEM1,
     input [63:0]   JUMP_ADD,
     input [31:0] INS_FB_EX,
-    output reg satp_update
+    output reg satp_update,
+    output TIME_INT_WAIT
                       
     );  
     
     `include "PipelineParams.vh"
     
     //machine mode specific
-    reg     heip,seip,ueip,htip,stip,utip,hsip,ssip,usip                ;
+    reg stip;
+    reg     heip,seip,ueip,htip,utip,hsip,ssip,usip                ;
     reg     meie,heie,seie,ueie,mtie,htie,stie,utie,msie,hsie,ssie,usie ;
     reg mxr,sum,mprv,spp,mpie,spie,upie,m_ie,s_ie,u_ie           ;
     reg     [1      :0]     mpp                                         ;
@@ -136,7 +138,7 @@ module CSR_FILE (
     reg [1:0] sxl,uxl,xs,fs;
     wire sd=(fs==2'b11);
     // machine mode wires
-    wire    [63 : 0] mip_r       = {52'b0,MEIP,1'b0,seip,ueip,MTIP,1'b0,stip,utip,MSIP,1'b0,ssip,usip}                          ;  //hardwired 0 for hypervisor specs
+    wire    [63 : 0] mip_r       = {52'b0,MEIP,1'b0,seip,ueip,MTIP,1'b0,STIP,utip,MSIP,1'b0,ssip,usip}                          ;  //hardwired 0 for hypervisor specs
     wire    [63 : 0] mie_r       = {52'b0,meie,1'b0,seie,ueie,mtie,1'b0,stie,utie,msie,1'b0,ssie,usie}                          ;  
     wire    [63 : 0] mstatus_r   = {sd,27'b0,sxl,uxl,9'b0,TSR,TW,TVM,mxr,sum,mprv,2'b0,fs,mpp,2'b0,spp,mpie,1'b0,spie,upie,m_ie,1'b0,s_ie,u_ie}  ;
     wire    [63 : 0] mtvec_r     = {mt_base,mt_mode}                                                                            ;
@@ -171,7 +173,7 @@ module CSR_FILE (
     // supervisor mode wires
     wire    [63 : 0] sstatus_r   =  {sd,29'b0,uxl,12'b0,mxr,sum,1'b0,2'b0,fs,2'b0,2'b0,spp,1'b0,1'b0,spie,upie,1'b0,1'b0,s_ie,u_ie}  ;    
     wire    [63 : 0] stvec_r     = {st_base,st_mode}                                            ;
-    wire    [63 : 0] sip_r       = {52'b0,2'b0,1'b0,seip,ueip,1'b0,1'b0,stip,utip,1'b0,1'b0,ssip,usip}               ;  //hardwired 0 for hypervisor specs
+    wire    [63 : 0] sip_r       = {52'b0,2'b0,1'b0,seip,ueip,1'b0,1'b0,STIP,utip,1'b0,1'b0,ssip,usip}               ;  //hardwired 0 for hypervisor specs
     wire    [63 : 0] sie_r       = {52'b0,1'b0,1'b0,seie,ueie,1'b0,1'b0,stie,utie,1'b0,1'b0,ssie,usie}               ;  
     wire    [63 : 0] sedeleg_r   = sedeleg_reg                                                  ;
     wire    [63 : 0] sideleg_r   = sideleg_reg                                                  ;
@@ -339,7 +341,7 @@ module CSR_FILE (
             sstatus        :    OUTPUT_DATA =  sstatus_r     ;
             sedeleg        :    OUTPUT_DATA =  sedeleg_r     ;
             sideleg        :    OUTPUT_DATA =  sideleg_r     ;
-            sie            :    OUTPUT_DATA =  sie_r         ;
+            sie            :    OUTPUT_DATA =  mie_r         ;
             stvec          :    OUTPUT_DATA =  stvec_r       ;
             scounteren     :    OUTPUT_DATA =  scounteren_r  ;
             sscratch       :    OUTPUT_DATA =  sscratch_r    ;
@@ -434,7 +436,7 @@ module CSR_FILE (
             interrupt     =   1'b1     ;    
             exception     =   1'b0     ;
         end
-        else if( mtie & MTIP) begin
+        else if( mtie & MTIP & m_ie) begin
             ecode_reg     =   31'd7    ;
             interrupt     =   1'b1     ;
             exception     =   1'b0     ;
@@ -450,7 +452,7 @@ module CSR_FILE (
             interrupt     =   1'b1     ;
             exception     =   1'b0     ;    
         end
-        else if( stie & STIP) begin
+        else if( stie & STIP & s_ie) begin
             ecode_reg     =   31'd5    ;
             interrupt     =   1'b1     ;
             exception     =   1'b0     ; 
@@ -704,9 +706,9 @@ module CSR_FILE (
         if(RST) begin
              mcycle_reg <=0;  
         end  
-        else if(!PROC_IDLE & (CSR_ADDRESS==mcycle) & !(interrupt_final | exception)) begin
-             mcycle_reg   <= input_data_final        ;
-        end
+        // else if(!PROC_IDLE & (CSR_ADDRESS==mcycle) & !(interrupt_final | exception) & csr_op) begin
+        //      mcycle_reg   <= input_data_final        ;
+        // end
         else begin
              mcycle_reg   <= mcycle_reg + 1'b1       ;
         end
@@ -799,11 +801,14 @@ module CSR_FILE (
             if(minsret_reg%100000==0) begin
                 $display(minsret_reg, " %h %h",PC,INS_FB_EX);
             end
-                    if(exception) begin 
-                        if (ecode_reg == 9) begin
-                  //          $fatal("system call : %h " ,PC);
-                        end
-                    end
+            if(minsret_reg == 32'd14_000_000) begin
+              //$fsdbDumpvars;
+            end
+             //       if(exception) begin 
+             //           if (ecode_reg == 9) begin
+             //     //          $fatal("system call : %h " ,PC);
+             //           end
+             //       end
             if(interrupt_final|exception) begin
                 if(handling_priviledge==mmode) begin
                     mpp <= curr_prev;
@@ -842,7 +847,6 @@ module CSR_FILE (
 
                     end
                     else begin
-                        mtval_reg<=0;
                         mepc_reg <=PC;
 
                     end
@@ -889,7 +893,6 @@ module CSR_FILE (
 
                     end
                     else begin
-                        stval_reg<=0;
                         sepc_reg <=PC;
 
                     end
@@ -947,13 +950,14 @@ module CSR_FILE (
                 curr_prev <= mpp;
                 mpie     <= 1'b1;
                 m_ie     <= mpie;
+                mpp <=0;
 
             end
             else if( CSR_CNT == sys_sret) begin
                 curr_prev <= spp;
-                mpie     <= 1'b1;
+                spie     <= 1'b1;
                 s_ie     <= spie;
-            
+               spp <=0;
 
             end
             else if( CSR_CNT == sys_uret) begin
@@ -995,12 +999,12 @@ module CSR_FILE (
                                                                 }                           ;
                     sedeleg        :    sedeleg_reg         <=  input_data_final            ;
                     sideleg        :    sideleg_reg         <=  input_data_final            ;
-                    sie            :    {seie,ueie,stie,
-                                        utie,ssie,usie}     <=  {
-                                                                input_data_final[9:8]       ,
-                                                                input_data_final[5:4]       ,
-                                                                input_data_final[1:0]
-                                                                }                           ;
+                   // sie            :    {seie,ueie,stie,
+                   //                     utie,ssie,usie}     <=  {
+                   //                                             input_data_final[9:8]       ,
+                   //                                             input_data_final[5:4]       ,
+                   //                                             input_data_final[1:0]
+                   //                                             }                           ;
                     stvec          :    {st_base,st_mode}   <=  input_data_final            ;
                     scounteren     :    {sir,stm,scy}       <=  input_data_final[2:0]       ;
                     sscratch       :    sscratch_reg        <=  input_data_final            ;
@@ -1034,6 +1038,14 @@ module CSR_FILE (
                     medeleg        :    medeleg_reg         <=  input_data_final            ;
                     mideleg        :    mideleg_reg         <=  input_data_final            ;
                     mie            :    {meie,seie,ueie,
+                                        mtie,stie,utie,
+                                        msie,ssie,usie}     <=  {
+                                                                input_data_final[11]        ,
+                                                                input_data_final[9:7]       ,
+                                                                input_data_final[5:3]       ,
+                                                                input_data_final[1:0]
+                                                                }                           ;
+                    sie            :    {meie,seie,ueie,
                                         mtie,stie,utie,
                                         msie,ssie,usie}     <=  {
                                                                 input_data_final[11]        ,
@@ -1079,7 +1091,8 @@ module CSR_FILE (
      
     end
     
-    assign  PRIV_JUMP       = exception | (CSR_CNT==sys_uret) | (CSR_CNT==sys_sret) | (CSR_CNT==sys_mret) | (interrupt_final)  ;
+    assign  PRIV_JUMP       = exception | (CSR_CNT==sys_uret) | (CSR_CNT==sys_sret) | (CSR_CNT==sys_mret) | (interrupt_final) & !PROC_IDLE ;
+    assign TIME_INT_WAIT    = STIP & stie & s_ie;
     assign  MPP             =mpp;
     assign  CURR_PREV       =curr_prev;
     assign SATP = satp_r;

@@ -579,14 +579,14 @@ axi_interconnect_0_new master_interconnect (
         .S_AXI_RREADY(M00_AXI_RREADY)
     );
   
-    reg [7:0] byte_ram[0: (1<<27)-1][0:3];
+    reg [7:0] byte_ram[0: (1<<26)-1][0:3];
 
-    bit [31:0] word_ram[0: (1<<27)-1];
+    bit [31:0] word_ram[0: (1<<26)-1];
 
     always@(negedge RSTN)
     begin
         $readmemh("data_hex.txt",word_ram);
-        for (int j=0; j < (1<<26); j=j+1)
+        for (int j=0; j < (1<<24); j=j+1)
         begin
             for (int i=0; i<4; i=i+1)
             begin

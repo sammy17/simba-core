@@ -22,9 +22,9 @@
 module RISCV_PROCESSOR#(
     parameter instruction_width     = 32                                          ,
     parameter address_width         = 64                                           ,
-    parameter block_size            = 16                                           ,
-    parameter cache_depth           = 1024                                          ,
-    parameter block_size_dat        = 16,
+    parameter block_size            = 4                                           ,
+    parameter cache_depth           = 256                                          ,
+    parameter block_size_dat        = 2,
     parameter l2_delay_read         = 10                                           ,
     localparam line_width           = $clog2(cache_depth)                          ,
     localparam offset_width         = $clog2(instruction_width*block_size/8 )               ,
@@ -311,7 +311,8 @@ module RISCV_PROCESSOR#(
     reg [DATA_WIDTH-1:0] DATA_FROM_AXIM;
     reg [DATA_WIDTH-1:0] DATA_FROM_AXIM_DAT;
     wire [DATA_WIDTH-1:0] PHY_ADDR,ADDR_TO_AXIM,ADDR_TO_AXIM_DAT;
-    wire itlb_ready,ADDR_TO_AXIM_VALID,ADDR_TO_AXIM_VALID_DAT;
+    (* mark_debug = "true" *) wire itlb_ready;
+    wire ADDR_TO_AXIM_VALID,ADDR_TO_AXIM_VALID_DAT;
 
     wire [3:0] WSTRB_OUT;
     wire [4:0] amo_to_dcache_from_dtlb;
@@ -320,9 +321,9 @@ module RISCV_PROCESSOR#(
        reg dcache_control_overide_with_dtlb;
        reg [DATA_WIDTH-1:0]    addr_to_dcache_from_dtlb;
        reg [DATA_WIDTH-1:0]    control_to_dcache_from_dtlb;
+       wire timer_interrupt_pending;
        
-       
-           wire dtlb_ready;
+   (* mark_debug = "true" *)        wire dtlb_ready;
      //reg [63:0]     mtime;
      //reg [63:0]     mtimecmp;
      //reg            timer_interrupt;
@@ -339,6 +340,8 @@ module RISCV_PROCESSOR#(
      
 
     wire op32;
+     wire COMB_PAGE_FAULT;
+    
  PIPELINE pipeline(
     .CLK(CLK),
     .RST(~RSTN),
@@ -366,7 +369,7 @@ module RISCV_PROCESSOR#(
     .INS_ID_EX(ins_id_ex),
     .MEIP(MEIP),
     .MSIP(MSIP),
-    .MTIP(MTIP),
+    .MTIP(MTIP|timer_interrupt_pending),
     .FENCE(fence),
     .AMO_TO_CACHE(amo_op),
     .OP_32_out(op32),
@@ -380,7 +383,9 @@ module RISCV_PROCESSOR#(
     .CURR_PREV(CURR_PREV),
     .MPP(MPP),
     .SFENCE(sfence_wire),
-    .LOAD_WORD(lword_to_dtlb)
+    .LOAD_WORD(lword_to_dtlb),
+    .COMB_PAGE_FAULT(COMB_PAGE_FAULT)
+    
     );
     
 
@@ -435,7 +440,6 @@ module RISCV_PROCESSOR#(
     reg [2          - 1 : 0] control;
     reg [ADDR_WIDTH - 1 : 0] address;
 
-    
     always@(posedge CLK)
     begin
     //     if (~RSTN)
@@ -663,7 +667,7 @@ myip_v1_0_M00_AXI # (
         .data_written(write_done)
     );
 
-   wire [1:0] final_dcache_control= (off_translation_for_itlb_request? control_to_dcache_from_itlb : ((cache_ready_ins & itlb_ready & tlb_ready_d3)? control_from_proc_dat : 2'b0)  ) ;
+   wire [1:0] final_dcache_control= (off_translation_for_itlb_request? control_to_dcache_from_itlb : ((cache_ready_ins & itlb_ready & tlb_ready_d3 & dtlb_ready& dtlb_ready_d4)? control_from_proc_dat : 2'b0)  ) ;
 
         Icache
     #(
@@ -754,8 +758,9 @@ myip_v1_0_M00_AXI # (
 	.LWORD_IN(lword_to_dtlb),
 	.LWORD_OUT(lword_to_dcache),
 	.SUM_BIT(1),
-	.MXR(1)
-    );
+	.MXR(1),
+    .COMB_PAGE_FAULT(COMB_PAGE_FAULT)
+   );
 
 ITLB
     #(.virt_addr_init(32'h8000_0000) ,
@@ -872,8 +877,8 @@ ITLB
        .M_AXI_RRESP                     (peripheral_interface_rresp),
        .M_AXI_RVALID                    (peripheral_interface_rvalid),
        .M_AXI_RREADY                    (peripheral_interface_rready),
-	   .WSTRB(WSTRB_TO_PERI )
-		
+	   .WSTRB(WSTRB_TO_PERI ),
+       .INTERUPT(timer_interrupt_pending)		
 	);
 
     reg [2:0] itlb_data_counter;
