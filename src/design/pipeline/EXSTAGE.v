@@ -219,7 +219,7 @@ module EXSTAGE(
         .ZIMM(ZIMM),
         .OUTPUT_DATA(csr_out),
         .PRIV_JUMP_ADD(priv_jump_add),
-        .PROC_IDLE(PROC_IDLE),
+        .PROC_IDLE(PROC_IDLE| FENCE| SFENCE_in),
         .PRIV_JUMP(priv_jump),
         .MEIP(MEIP),   
         .MTIP(1'b0),   
@@ -470,7 +470,7 @@ rv64m
     assign DATA_CACHE_CONTROL   = data_cache_control & {2{!flush_internal}}   & {2{!priv_jump}}           & {2{!satp_update}}                         ;
     assign TYPE_OUT             = type_out & {2{!flush_internal}} & {2{!priv_jump}}       & {2{!satp_update}}                                   ;
     assign FLUSH_I              = flush_internal                                                                            ;
-    assign EXSTAGE_STALLED      = ((ALU_CNT==alu_mstd) & !rv32m_ready ) & !flush_internal      & !satp_update   & !TIME_INT_WAIT           ;
+    assign EXSTAGE_STALLED      = ((ALU_CNT==alu_mstd) & !rv32m_ready ) & !flush_internal      & !satp_update    ;
     assign FENCE_OUT            = (FENCE) & !flush_internal & CACHE_READY_INS;
     assign AMO_OP_out         = AMO_OP_in & {5{!flush_internal}};
     assign OP_32_out       =  OPS_32 & !flush_internal;

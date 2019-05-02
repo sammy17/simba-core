@@ -579,9 +579,9 @@ axi_interconnect_0_new master_interconnect (
         .S_AXI_RREADY(M00_AXI_RREADY)
     );
   
-    reg [7:0] byte_ram[0: (1<<24)-1][0:3];
+    reg [7:0] byte_ram[0: (1<<26)-1][0:3];
 
-    bit [31:0] word_ram[0: (1<<24)-1];
+    bit [31:0] word_ram[0: (1<<26)-1];
 
     always@(negedge RSTN)
     begin

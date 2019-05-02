@@ -138,7 +138,7 @@ module CSR_FILE (
     reg [1:0] sxl,uxl,xs,fs;
     wire sd=(fs==2'b11);
     // machine mode wires
-    wire    [63 : 0] mip_r       = {52'b0,MEIP,1'b0,seip,ueip,MTIP,1'b0,stip,utip,MSIP,1'b0,ssip,usip}                          ;  //hardwired 0 for hypervisor specs
+    wire    [63 : 0] mip_r       = {52'b0,MEIP,1'b0,seip,ueip,MTIP,1'b0,STIP,utip,MSIP,1'b0,ssip,usip}                          ;  //hardwired 0 for hypervisor specs
     wire    [63 : 0] mie_r       = {52'b0,meie,1'b0,seie,ueie,mtie,1'b0,stie,utie,msie,1'b0,ssie,usie}                          ;  
     wire    [63 : 0] mstatus_r   = {sd,27'b0,sxl,uxl,9'b0,TSR,TW,TVM,mxr,sum,mprv,2'b0,fs,mpp,2'b0,spp,mpie,1'b0,spie,upie,m_ie,1'b0,s_ie,u_ie}  ;
     wire    [63 : 0] mtvec_r     = {mt_base,mt_mode}                                                                            ;
@@ -341,7 +341,7 @@ module CSR_FILE (
             sstatus        :    OUTPUT_DATA =  sstatus_r     ;
             sedeleg        :    OUTPUT_DATA =  sedeleg_r     ;
             sideleg        :    OUTPUT_DATA =  sideleg_r     ;
-            sie            :    OUTPUT_DATA =  sie_r         ;
+            sie            :    OUTPUT_DATA =  mie_r         ;
             stvec          :    OUTPUT_DATA =  stvec_r       ;
             scounteren     :    OUTPUT_DATA =  scounteren_r  ;
             sscratch       :    OUTPUT_DATA =  sscratch_r    ;
@@ -801,11 +801,14 @@ module CSR_FILE (
             if(minsret_reg%100000==0) begin
                 $display(minsret_reg, " %h %h",PC,INS_FB_EX);
             end
-                    if(exception) begin 
-                        if (ecode_reg == 9) begin
-                  //          $fatal("system call : %h " ,PC);
-                        end
-                    end
+            if(minsret_reg == 32'd14_000_000) begin
+              //$fsdbDumpvars;
+            end
+             //       if(exception) begin 
+             //           if (ecode_reg == 9) begin
+             //     //          $fatal("system call : %h " ,PC);
+             //           end
+             //       end
             if(interrupt_final|exception) begin
                 if(handling_priviledge==mmode) begin
                     mpp <= curr_prev;
@@ -844,7 +847,6 @@ module CSR_FILE (
 
                     end
                     else begin
-                        mtval_reg<=0;
                         mepc_reg <=PC;
 
                     end
@@ -891,7 +893,6 @@ module CSR_FILE (
 
                     end
                     else begin
-                        stval_reg<=0;
                         sepc_reg <=PC;
 
                     end
@@ -949,13 +950,14 @@ module CSR_FILE (
                 curr_prev <= mpp;
                 mpie     <= 1'b1;
                 m_ie     <= mpie;
+                mpp <=0;
 
             end
             else if( CSR_CNT == sys_sret) begin
                 curr_prev <= spp;
                 spie     <= 1'b1;
                 s_ie     <= spie;
-            
+               spp <=0;
 
             end
             else if( CSR_CNT == sys_uret) begin
@@ -997,12 +999,12 @@ module CSR_FILE (
                                                                 }                           ;
                     sedeleg        :    sedeleg_reg         <=  input_data_final            ;
                     sideleg        :    sideleg_reg         <=  input_data_final            ;
-                    sie            :    {seie,ueie,stie,
-                                        utie,ssie,usie}     <=  {
-                                                                input_data_final[9:8]       ,
-                                                                input_data_final[5:4]       ,
-                                                                input_data_final[1:0]
-                                                                }                           ;
+                   // sie            :    {seie,ueie,stie,
+                   //                     utie,ssie,usie}     <=  {
+                   //                                             input_data_final[9:8]       ,
+                   //                                             input_data_final[5:4]       ,
+                   //                                             input_data_final[1:0]
+                   //                                             }                           ;
                     stvec          :    {st_base,st_mode}   <=  input_data_final            ;
                     scounteren     :    {sir,stm,scy}       <=  input_data_final[2:0]       ;
                     sscratch       :    sscratch_reg        <=  input_data_final            ;
@@ -1036,6 +1038,14 @@ module CSR_FILE (
                     medeleg        :    medeleg_reg         <=  input_data_final            ;
                     mideleg        :    mideleg_reg         <=  input_data_final            ;
                     mie            :    {meie,seie,ueie,
+                                        mtie,stie,utie,
+                                        msie,ssie,usie}     <=  {
+                                                                input_data_final[11]        ,
+                                                                input_data_final[9:7]       ,
+                                                                input_data_final[5:3]       ,
+                                                                input_data_final[1:0]
+                                                                }                           ;
+                    sie            :    {meie,seie,ueie,
                                         mtie,stie,utie,
                                         msie,ssie,usie}     <=  {
                                                                 input_data_final[11]        ,
@@ -1081,7 +1091,7 @@ module CSR_FILE (
      
     end
     
-    assign  PRIV_JUMP       = exception | (CSR_CNT==sys_uret) | (CSR_CNT==sys_sret) | (CSR_CNT==sys_mret) | (interrupt_final)  ;
+    assign  PRIV_JUMP       = exception | (CSR_CNT==sys_uret) | (CSR_CNT==sys_sret) | (CSR_CNT==sys_mret) | (interrupt_final) & !PROC_IDLE ;
     assign TIME_INT_WAIT    = STIP & stie & s_ie;
     assign  MPP             =mpp;
     assign  CURR_PREV       =curr_prev;
