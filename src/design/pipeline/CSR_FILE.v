@@ -327,7 +327,7 @@ module CSR_FILE (
             frm            :    OUTPUT_DATA =  frm_r         ;
             fcsr           :    OUTPUT_DATA =  fcsr_r        ;     */
             cycle          :    OUTPUT_DATA =  cycle_r       ;
-            timer          :    OUTPUT_DATA =  cycle_r       ;
+            timer          :    OUTPUT_DATA =  cycle_r>>3       ;
             instret        :    OUTPUT_DATA =  instret_r     ;
 /*          hpmcounter3    :    OUTPUT_DATA =  hpmcounter3_r ;
             hpmcounter4    :    OUTPUT_DATA =  hpmcounter4_r ;
