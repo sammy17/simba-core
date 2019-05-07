@@ -363,7 +363,7 @@ module DTLB
     assign OP_TYPE_OUT =op_type_reg & {2{PHY_ADDR_VALID}};
     assign DATA_OUT = data_in_reg;
     assign WSTRB_OUT= wstrb_in_reg;
-    assign AMO_OUT = amo_in_reg;
+    assign AMO_OUT = PHY_ADDR_VALID? amo_in_reg : 5;
     assign FLUSH_OUT = flush_in_reg & PHY_ADDR_VALID;
     assign OP32_OUT = op32_in_reg;
     assign VIRT_ADDR_OUT = virt_addr_reg; 
