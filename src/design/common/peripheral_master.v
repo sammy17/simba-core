@@ -176,13 +176,13 @@ always@(posedge M_AXI_ACLK) begin
 				end//BREADY
 			end//case write low	
 			mtime_read: begin
-				DATA_FROM_PERI <= mtime_reg;
+				DATA_FROM_PERI <= mtime_reg>>3;
 				DATA_FROM_PERI_READY <= 1;
 				master_state <= idle;
 			end
 			mcomp_write: begin
 				DATA_FROM_PERI_READY <=1;
-				mtime_comp_reg <= DATA_TO_PERI;
+				mtime_comp_reg <= DATA_TO_PERI<<3;
 				master_state <= idle;
 			end
 		endcase
