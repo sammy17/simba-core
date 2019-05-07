@@ -11,7 +11,7 @@
 #-----------------------------------------------------------
 start_gui
 create_project riscv . -part xc7z010iclg400-1L
-add_files -norecurse {../src/design/newcache/i_cache_inst.vh ../src/design/common/PipelineConnections.vh ../src/design/common/PipelineParams.vh}
+add_files -norecurse {../src/design/newcache/i_cache_inst.vh ../src/design/common/PipelineConnections.vh ../src/design/common/PipelineParams.vh ../src/design/common/peripheral_master.v}
 add_files -norecurse {../src/design/pipeline/PIPELINE.v ../src/design/pipeline/CSR_FILE.v ../src/design/pipeline/DECODE_UNIT.v ../src/design/pipeline/EXSTAGE.v ../src/design/tlb/DTLB.v ../src/design/m_standard/Division.v ../src/design/common/Multiplexer.v ../src/design/newcache/myip_v1_0_S00_AXI.v ../src/design/pipeline/STATE_REG.v ../axi_interconnect_v1_7_vl_rfs.v ../src/design/newcache/memory.v ../src/design/common/RISCV_PROCESSOR.v ../src/design/m_standard/RV32M.v ../src/design/tlb/ITLB.v ../src/design/pipeline/CONTROL_UNIT.v ../src/simulation/TEST_RISCV_PROCESSOR.v ../axi_interconnect_0.v ../src/design/newcache/Dcache.v ../src/design/m_standard/Multiplication.v ../src/design/m_standard/mul_top.v ../src/design/newcache/state_mem.v ../src/design/pipeline/BHT.v ../src/design/newcache/cache.v ../src/design/pipeline/IMM_EXT.v ../src/design/pipeline/Peripheral.v ../src/design/pipeline/INS_TYPE_ROM.v ../src/design/pipeline/REG_ARRAY.v ../src/design/newcache/myip_v1_0.v ../src/design/newcache/myip_v1_0_M00_AXI.v ../src/design/wrapper/PERIPHERAL_INTERFACE.v ../src/design/newcache/myip_slave_lite.v}
 set_property compxlib.vcs_compiled_library_dir /global/apps/vcs_2017.12-SP2-2/bin [current_project]
 update_compile_order -fileset sources_1
