@@ -157,6 +157,10 @@ module PIPELINE #(
    reg page_fault_id_fb,page_fault_fb_ex;
    reg access_fault_id_fb,access_fault_fb_ex;
    reg page_load_fault_reg;
+   wire im_dep1_wire;
+   reg im_dep1_ex;
+   wire im_dep2_wire;
+   reg im_dep2_ex;
     DECODE_UNIT decode_unit(
         .CLK                (CLK)                           ,
         .TYPE_MEM3_WB       (((~CACHE_READY_DATA |  page_load_fault_reg) )? 0 : type_mem3_wb)                  ,
@@ -197,19 +201,19 @@ module PIPELINE #(
   
     EXSTAGE exstage(
         .CLK(CLK)                                                   ,
-        .COMP1              (comp1_fb_ex)                           ,
-        .COMP2              (comp2_fb_ex)                           , 
-        .COMP1_U            (comp1_fb_ex)                           ,
-        .COMP2_U            (comp2_fb_ex)                           , 
+        .COMP1              (im_dep1_ex?alu_ex_mem1:comp1_fb_ex)                           ,
+        .COMP2              (im_dep2_ex?alu_ex_mem1:comp2_fb_ex)                           , 
+        .COMP1_U            (im_dep1_ex?alu_ex_mem1:comp1_fb_ex)                           ,
+        .COMP2_U            (im_dep2_ex?alu_ex_mem1:comp2_fb_ex)                           , 
         .JUMP_BUS1          (jump1_fb_ex)                           ,
-        .JUMP_BUS2          (jump2_fb_ex)                           ,
+        .JUMP_BUS2          (im_dep1_ex&jumpr_fb_ex?alu_ex_mem1:jump2_fb_ex)                           ,
         .FENCE              (fence_fb_ex)                           ,  
         //.A                  ( ins_fb_ex == 32'hc0002573 ? clock: (ins_fb_ex == 32'hc0202573 ? ins : a_bus_fb_ex))                  ,//clock,ins
-        .A                  (a_bus_fb_ex)                           ,
-        .B                  (b_bus_fb_ex)                           , 
+        .A                  ((im_dep2_ex&a_bus_sel_fb_ex)?alu_ex_mem1:a_bus_fb_ex)                           ,
+        .B                  ((im_dep1_ex&b_bus_sel_fb_ex)?alu_ex_mem1:b_bus_fb_ex)                           , 
         //.A_signed           ( ins_fb_ex == 32'hc0002573 ? clock: (ins_fb_ex == 32'hc0202573 ? ins : a_bus_fb_ex ))             ,
-        .A_signed           (a_bus_fb_ex)                           ,
-        .B_signed           (b_bus_fb_ex)                           ,
+        .A_signed           ((im_dep2_ex&a_bus_sel_fb_ex)?alu_ex_mem1:a_bus_fb_ex)                           ,
+        .B_signed           ((im_dep1_ex&b_bus_sel_fb_ex)?alu_ex_mem1:b_bus_fb_ex)                           ,
         .emu_wb (emu_wb ),
         .PC_FB_EX           (pc_fb_ex)                              ,
         .ALU_CNT            (alu_cnt_fb_ex)                         , 
@@ -279,6 +283,7 @@ module PIPELINE #(
             rs1_id_fb}),
         .OUT(rs1_final)
         );
+    assign im_dep1_wire = feed_back_muxa_sel_id_fb == 2;
    
     Multiplexer #(
         .ORDER(3),
@@ -295,7 +300,8 @@ module PIPELINE #(
             rs2_id_fb}),
         .OUT(rs2_final)
         );
-                 
+    assign im_dep2_wire = feed_back_muxb_sel_id_fb==2;
+
     Multiplexer #(
         .ORDER(1),
         .WIDTH(64)  
@@ -431,9 +437,9 @@ module PIPELINE #(
                 3'b000 : BYTE_ENB_TO_CACHE = 8'b0000_1111;
                 3'b001 : BYTE_ENB_TO_CACHE = 8'b0001_1110;
                 3'b010 : BYTE_ENB_TO_CACHE = 8'b0011_1100;
-                3'b011 :BYTE_ENB_TO_CACHE =  8'b0111_1000;     
+                3'b011 : BYTE_ENB_TO_CACHE = 8'b0111_1000;     
                 3'b100 : BYTE_ENB_TO_CACHE = 8'b1111_0000;
-                default:BYTE_ENB_TO_CACHE =  8'b0000_0000;
+                default: BYTE_ENB_TO_CACHE = 8'b0000_0000;
             endcase
         end
         else if (op_type_ex_ex2 == store_hword)
@@ -455,7 +461,7 @@ module PIPELINE #(
                 3'b000 : BYTE_ENB_TO_CACHE = 8'b0000_0001;
                 3'b001 : BYTE_ENB_TO_CACHE = 8'b0000_0010;
                 3'b010 : BYTE_ENB_TO_CACHE = 8'b0000_0100;
-                3'b011 :BYTE_ENB_TO_CACHE =  8'b0000_1000;     
+                3'b011 : BYTE_ENB_TO_CACHE = 8'b0000_1000;     
                 3'b100 : BYTE_ENB_TO_CACHE = 8'b0001_0000;
                 3'b101 : BYTE_ENB_TO_CACHE = 8'b0010_0000;
                 3'b110 : BYTE_ENB_TO_CACHE = 8'b0100_0000;
@@ -474,33 +480,33 @@ module PIPELINE #(
     assign rs2_count = (flush_e|flush_e_i)?0:(rs2_type_fb==2'b10 ? 5:(rs2_type_fb==2'b00 ?1:0))     ;
 
  
-//    integer read_file;
-//    initial read_file=$fopen("pc_log.txt","r");
-//    integer wb_file;
-//    initial wb_file=$fopen("wb_log.txt","r");
-//    integer tip_file;
-//    initial tip_file =  $fopen("ints.txt","r");
-//    string values; 
-//    string wb_datas; 
-//    string interr;
-//    reg [63:0] PC_VAL;
+    integer read_file;
+    initial read_file=$fopen("pc_log.txt","r");
+    integer wb_file;
+    initial wb_file=$fopen("wb_log.txt","r");
+    integer tip_file;
+    initial tip_file =  $fopen("ints.txt","r");
+    string values; 
+    string wb_datas; 
+    string interr;
+    reg [63:0] PC_VAL;
 //    always@(*)
 //        emu_wb = wb_datas.atohex();
     always@(posedge CLK)
     begin
-//        if(RST) begin
-//            stip <=0;
-//        end
-//        if(~exstage.satp_update & ~(exstage.PAGE_FAULT_INS) & ~(exstage.PROC_IDLE) & stall_enable_fb_ex & |pc_fb_ex & ~fence_fb_ex & ~exstage.csr_file.interrupt_final) begin
-//               $fgets(values,read_file);
-//               $fgets(wb_datas,wb_file);
-//               $fgets(interr,tip_file);
-//               stip <= interr.atohex();
-//               if(((pc_fb_ex !== values.atohex())|(alu_out_wire !== wb_datas.atohex()))&!cbranch_fb_ex & |rd_fb_ex &(ins_fb_ex[31:20]!=32'hc01 | !exstage.csr_file.csr_op)) begin
-//                   $fatal("seqeunce fail expected PC : %h comming PC %h wb %h %h",values.atohex(),pc_fb_ex,wb_datas.atohex(),alu_out_wire,$time*1000);
-//               end
-//
-//        end
+        if(RST) begin
+            stip <=0;
+        end
+        if(~exstage.satp_update & ~(exstage.PAGE_FAULT_INS) & ~(exstage.PROC_IDLE) & stall_enable_fb_ex & |pc_fb_ex & ~fence_fb_ex & ~exstage.csr_file.interrupt_final) begin
+               $fgets(values,read_file);
+               $fgets(wb_datas,wb_file);
+               $fgets(interr,tip_file);
+               stip <= interr.atohex();
+               if(((pc_fb_ex !== values.atohex())|(alu_out_wire !== wb_datas.atohex()))&!cbranch_fb_ex & |rd_fb_ex &(ins_fb_ex[31:20]!=32'hc01 | !exstage.csr_file.csr_op)) begin
+                   $fatal("seqeunce fail expected PC : %h comming PC %h wb %h %h",values.atohex(),pc_fb_ex,wb_datas.atohex(),alu_out_wire,$time*1000);
+               end
+
+        end
 //           
         if(!( CACHE_READY && CACHE_READY_DATA && !flush_internal) & PAGE_FAULT_DAT & !COMB_PAGE_FAULT) begin
             page_load_fault_reg <=1;
@@ -569,6 +575,8 @@ module PIPELINE #(
                 imm_ex_ex2               <= 0           ;  
                 fence_id_fb              <=0;
                 fence_fb_ex              <= 0;  
+                im_dep1_ex <=0;
+                im_dep2_ex <=0;
                 amo_fb_ex <=0;
                 
                 amo_id_fb<=0;
@@ -702,6 +710,8 @@ module PIPELINE #(
 
                 access_fault_id_fb      <= ACCESS_FAULT_INS ;
                 access_fault_fb_ex       <= access_fault_id_fb;
+                im_dep1_ex  <= im_dep1_wire;
+                im_dep2_ex  <= im_dep2_wire;
 
             end  
             else
@@ -769,6 +779,9 @@ module PIPELINE #(
                 // access_fault_id_fb<=0;
                 // sfence_id_fb <=0;
                 sfence_fb_ex <=0;
+                im_dep1_ex <=0;
+                im_dep2_ex <=0;
+
 
             end
             
@@ -818,7 +831,7 @@ module PIPELINE #(
         begin       
             
             // pc_ex_mem1               <=      0                  ;            
-            alu_ex_mem1              <=      0                  ;
+            alu_ex_mem1              <=      alu_out_wire                  ;
             op_type_ex_mem1          <=      0                  ;
             if(feed_back_muxa_sel_id_fb>2) 
                  feed_back_muxa_sel_id_fb <=      feed_back_muxa_sel_id_fb+1;  
@@ -828,7 +841,8 @@ module PIPELINE #(
                 rs1_id_fb                <=      alu_written_back;             
             if (feed_back_muxb_sel_id_fb==7 )
                 rs2_id_fb                <=      alu_written_back;                                      
-          
+           im_dep1_ex  <= 0; 
+           im_dep2_ex  <= 0; 
         
             // if(PAGE_FAULT_DAT| ACCESS_FAULT_DAT) begin
                 // type_mem3_wb <= 0;
