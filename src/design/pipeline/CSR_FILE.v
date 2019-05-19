@@ -79,7 +79,8 @@ module CSR_FILE (
     input [63:0]   JUMP_ADD,
     input [31:0] INS_FB_EX,
     output reg satp_update,
-    output TIME_INT_WAIT
+    output TIME_INT_WAIT,
+    input INS_VALID_FB_EX
                       
     );  
     
@@ -558,7 +559,7 @@ module CSR_FILE (
                 $display(minsret_reg, " %h %h",PC,INS_FB_EX);
             end
             if(minsret_reg == 32'd14_000_000) begin
-              //$fsdbDumpvars;
+                //$fsdbDumpvars;
             end
              
             if(interrupt|exception) begin
@@ -765,7 +766,7 @@ module CSR_FILE (
      
     end
     
-    assign  PRIV_JUMP       = exception | (CSR_CNT==sys_uret) | (CSR_CNT==sys_sret) | (CSR_CNT==sys_mret) | (interrupt) ;
+    assign  PRIV_JUMP       = (exception | (CSR_CNT==sys_uret) | (CSR_CNT==sys_sret) | (CSR_CNT==sys_mret) | (interrupt) )&INS_VALID_FB_EX;
     assign TIME_INT_WAIT    = STIP & stie & s_ie;
     assign  MPP             =mpp;
     assign  CURR_PREV       =curr_prev;

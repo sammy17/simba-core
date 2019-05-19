@@ -85,8 +85,8 @@ module EXSTAGE(
     (* mark_debug="true" *) input SFENCE_in,
     (* mark_debug="true" *) output SFENCE,
     output LOAD_WORD,
-    input CACHE_READY_INS
-
+    input CACHE_READY_INS,
+    input INS_VALID_FB_EX
      
     );
     //     reg        comp_out;
@@ -215,7 +215,7 @@ module EXSTAGE(
          if(RST) begin
              ins_addr_mis_al <= 0;
          end
-         else if (cbranch ? comp_out_w :jump_reg|jumpr_reg) begin
+         else if ((cbranch ? comp_out_w :jump_reg|jumpr_reg)&!flush_internal) begin
              ins_addr_mis_al <= &jump_addr_for_non_priv_branch[1:0] ;
          end
      end
@@ -232,10 +232,12 @@ module EXSTAGE(
         .PRIV_JUMP_ADD(priv_jump_add),
         .PROC_IDLE(PROC_IDLE| FENCE| SFENCE_in),
         .PRIV_JUMP(priv_jump),
-        .MEIP(MEIP),   
+        .SEIP(MEIP),   
+        .MEIP(0),
+        .MSIP(0),
         .MTIP(1'b0),   
         .STIP(MTIP),   
-        .MSIP(MSIP)  ,
+        .SSIP(MSIP)  ,
         .RST(RST)   ,
         .ILL_INS(ILEGAL)   ,
         .INS_ADDR_MISSALIG(ins_addr_mis_al),
@@ -267,7 +269,8 @@ module EXSTAGE(
         .JUMP_ADD(jump_addr_for_non_priv_branch),
         .INS_FB_EX(INS_FB_EX),
         .satp_update(satp_update),
-        .TIME_INT_WAIT(TIME_INT_WAIT)
+        .TIME_INT_WAIT(TIME_INT_WAIT),
+        .INS_VALID_FB_EX(INS_VALID_FB_EX)
 
         );
         
