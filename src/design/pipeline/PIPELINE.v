@@ -95,6 +95,7 @@ module PIPELINE #(
     
     `include "PipelineParams.vh"
     `include "PipelineConnections.vh"
+    wire [63:0]  dcache_address;
    reg ins_valid_fb_ex; 
     reg  [63:0] clock                     ;
     reg  [63:0] ins                       ;
@@ -264,7 +265,8 @@ module PIPELINE #(
         .PC_EX_MEM1(COMB_PAGE_FAULT?pc_ex_mem1: pc_mem3_wb),
         .SFENCE_in(sfence_fb_ex),
         .SFENCE(SFENCE),
-        .LOAD_WORD(LOAD_WORD)
+        .LOAD_WORD(LOAD_WORD),
+        .DCACHE_ADDRESS(dcache_address)
         );
    
     Multiplexer #(
@@ -427,7 +429,7 @@ module PIPELINE #(
         else
             wb_data_final = alu_mem3_wb;
         
-        ADDR_TO_DATA_CACHE = {alu_out_wire[63:2],2'b00};
+        ADDR_TO_DATA_CACHE = {dcache_address[63:2],2'b00};
         
         if (op_type_ex_ex2 == store_double)
             BYTE_ENB_TO_CACHE =8'b1111_1111;
@@ -497,7 +499,7 @@ module PIPELINE #(
    //     if(RST) begin
    //         stip <=0;
    //     end
-   //     if(~exstage.satp_update & ~(exstage.PAGE_FAULT_INS) & ~(exstage.PROC_IDLE) & stall_enable_fb_ex & |pc_fb_ex & ~fence_fb_ex & ~exstage.csr_file.interrupt_final) begin
+   //     if(~exstage.satp_update & ~(exstage.PAGE_FAULT_INS) & ~(exstage.PROC_IDLE) & stall_enable_fb_ex & |pc_fb_ex & ~fence_fb_ex & ~exstage.csr_file.interrupt) begin
    //            $fgets(values,read_file);
    //            $fgets(wb_datas,wb_file);
    //            $fgets(interr,tip_file);

@@ -104,7 +104,7 @@ module CSR_FILE (
     reg     [63     :0]     mtval_reg                          ;
     reg     [62     :0]     mecode_reg                         ;
     reg                     minterrupt                         ;
-    reg     [62     :0]     ecode_reg                      ;
+    reg     [5     :0]     ecode_reg                      ;
     reg                     interrupt                      ;
     
     //supervisor mode specific
@@ -279,7 +279,8 @@ module CSR_FILE (
                             end
 
         endcase
-        if(csr_op & !(PROC_IDLE)) begin
+        
+        if(csr_op ) begin
             if (curr_prev<CSR_ADDRESS[9:8]) begin
                 illegal_access = 1'b1;
             end
@@ -308,6 +309,7 @@ module CSR_FILE (
         end
     end
     //Handling Privilage System instruction and Read from CSR Registers
+  
     always@(*)
     begin
        
@@ -315,14 +317,7 @@ module CSR_FILE (
         
         
         case ( CSR_ADDRESS )
-            ustatus        :    OUTPUT_DATA =  ustatus_r     ;
-            uie            :    OUTPUT_DATA =  uie_r         ;
-            utvec          :    OUTPUT_DATA =  utvec_r       ;
-            uscratch       :    OUTPUT_DATA =  uscratch_r    ;
-            uepc           :    OUTPUT_DATA =  uepc_r        ;
-            ucause         :    OUTPUT_DATA =  ucause_r      ;
-            utval          :    OUTPUT_DATA =  utval_r       ;
-            uip            :    OUTPUT_DATA =  uip_r         ;
+            
 /*          fflags         :    OUTPUT_DATA =  fflags_r      ;
             frm            :    OUTPUT_DATA =  frm_r         ;
             fcsr           :    OUTPUT_DATA =  fcsr_r        ;     */
@@ -400,315 +395,82 @@ module CSR_FILE (
             dscratch       :    OUTPUT_DATA =  dscratch_r     ;  */
             default        :    OUTPUT_DATA =  32'b0          ;
         endcase
+    end 
         
-        
-        
+       wire [5:0] load_ac_ecode = LD_ACC_FAULT?5:0;
+       wire [5:0] store_ac_ecode = STORE_ACC_FAULT?7:0;
+       wire [5:0] load_page_ecode = LD_PAGE_FAULT ?13:0;
+       wire [5:0] store_page_ecode = STORE_PAGE_FAULT?15:0;
+       wire [5:0] final_load_store_ecode = load_ac_ecode | load_page_ecode | store_ac_ecode| store_page_ecode;
+       wire final_ld_st_fault = LD_ACC_FAULT| STORE_ACC_FAULT| LD_PAGE_FAULT | LD_ACC_FAULT;
+
+       wire software_inter = (ssie & SSIP);
+       wire timer_inter =   (stie & STIP);
+       wire extern_inter =  (seie & SEIP);
+       wire [5:0] timer_inter_ecode = timer_inter  ? 5:0 ;
+       wire [5:0] extern_inter_ecode = extern_inter ? 9:0 ;
+       wire [5:0] soft_inter_ecode = software_inter ? 1 :0 ;
+       wire final_inter = (timer_inter | extern_inter | software_inter)&s_ie;
+       wire [5:0] final_inter_ecode = timer_inter_ecode | extern_inter_ecode | soft_inter_ecode;
+
+       wire [5:0] ins_page_ecode = INS_PAGE_FAULT ? 12 : 0 ;
+       wire [5:0] ins_acc_ecode = INS_ACC_FAULT ? 1 : 0 ;
+       wire [5:0] illegal_ins_ecode = (ILL_INS | illegal_access )&~(INS_PAGE_FAULT|INS_ACC_FAULT)? 2 : 0;
+       wire [5:0] ecall_ecode  = (CSR_CNT == sys_ecall) ? 8+curr_prev: 0;
+       wire [5:0] ebreak_ecode  = (CSR_CNT == sys_ebreak) ? 3 :0 ;
+       wire [5:0] ins_miss_ecode = 0;
+       wire [5:0] load_miss_ecode = LD_ADDR_MISSALIG ? 4 : 0;
+       wire [5:0] store_miss_ecode = STORE_ADDR_MISSALIG ? 6 : 0;
+       wire [5:0] final_excep_ecode = (ins_page_ecode | ins_acc_ecode | illegal_ins_ecode | ecall_ecode | ebreak_ecode | ins_miss_ecode | load_miss_ecode | store_miss_ecode );
+       wire final_exception =  INS_PAGE_FAULT | INS_ACC_FAULT |ILL_INS |illegal_access | (CSR_CNT == sys_ecall) | (CSR_CNT ==sys_ebreak) | INS_ADDR_MISSALIG | LD_ADDR_MISSALIG | STORE_ADDR_MISSALIG;
+       wire [63:0] PRIV_JUMP_ADD1 = (exception ) & (curr_prev==mmode) ? {mt_base,2'b0} : 0 ;
+       wire [63:0] PRIV_JUMP_ADD2  = (exception )& (curr_prev==smode | curr_prev == umode) & medeleg_reg[ecode_reg] ? {st_base,2'b0} : 0 ;
+       wire [63:0] PRIV_JUMP_ADD3  = (exception )& (curr_prev==smode | curr_prev == umode) & ~medeleg_reg[ecode_reg] ? {mt_base,2'b0} : 0 ;
+       wire [63:0] PRIV_JUMP_ADD4  = (interrupt) ? {st_base,2'b0} : 0;
+      wire [63:0] PRIV_JUMP_ADD5  = ~(interrupt|exception) & (CSR_CNT==sys_mret) ? mepc_reg :0 ;
+     wire [63:0] PRIV_JUMP_ADD6   = ~(interrupt|exception) & (CSR_CNT ==sys_sret) ? sepc_reg : 0; 
+     wire [63:0] PRIV_JUMP_FINAL = PRIV_JUMP_ADD1 | PRIV_JUMP_ADD2 |PRIV_JUMP_ADD3 |PRIV_JUMP_ADD4 |PRIV_JUMP_ADD5 | PRIV_JUMP_ADD6;
+    wire [1:0] hand_priv1= curr_prev == mmode ? mmode : 0;
+    wire [1:0] hand_priv2 = (exception )& (curr_prev==smode | curr_prev == umode) & medeleg_reg[ecode_reg]? smode : 0;
+    wire [1:0] hand_priv3 = (exception )& (curr_prev==smode | curr_prev == umode) & ~medeleg_reg[ecode_reg]? mmode : 0;
+    wire [1:0] hand_priv4 = (interrupt) ? smode : 0;
+    wire [1:0] hand_priv_final = hand_priv1 | hand_priv2 | hand_priv3| hand_priv4;
+    always@(*) begin
         //exception/interupt finding combo
         if(fault_while_idle) begin
             ecode_reg     =   ecode_while_idle    ;
             interrupt     =   1'b0     ;
             exception     =   1'b1     ;
         end
-        else if(LD_ACC_FAULT) begin
-            ecode_reg     =   31'd5    ;
+        else if(final_ld_st_fault) begin
+            ecode_reg     =   final_load_store_ecode    ;
             interrupt     =   1'b0     ;
             exception     =   1'b1     ;
         end
-        
-        else if(STORE_ACC_FAULT) begin 
-            ecode_reg     =   31'd7    ;
-            interrupt     =   1'b0     ;
-            exception     =   1'b1     ;
-        end
-
-        else if(LD_PAGE_FAULT) begin 
-            ecode_reg     =   31'd13    ;
-            interrupt     =   1'b0     ;
-            exception     =   1'b1     ; 
-        end
-        else if(STORE_PAGE_FAULT) begin
-            ecode_reg     =   31'd15    ;
-            interrupt     =   1'b0     ;
-            exception     =   1'b1     ; 
-        end
-        else if( meie & MEIP) begin
-            ecode_reg     =   31'd11   ;
-            interrupt     =   1'b1     ;    
-            exception     =   1'b0     ;
-        end
-        else if( mtie & MTIP & m_ie) begin
-            ecode_reg     =   31'd7    ;
-            interrupt     =   1'b1     ;
-            exception     =   1'b0     ;
-
-        end
-        else if( msie & MSIP) begin
-            ecode_reg     =   31'd3    ;
+        else if(final_inter) begin
+            ecode_reg     =   final_inter_ecode;
             interrupt     =   1'b1     ;
             exception     =   1'b0     ; 
         end
-        else if(seie & SEIP) begin
-            ecode_reg     =   31'd9   ;
-            interrupt     =   1'b1     ;
-            exception     =   1'b0     ;    
-        end
-        else if( stie & STIP & s_ie) begin
-            ecode_reg     =   31'd5    ;
-            interrupt     =   1'b1     ;
-            exception     =   1'b0     ; 
-        end
-        else if(ssie & SSIP) begin
-            ecode_reg     =   31'd2    ;
-            interrupt     =   1'b1     ;
-            exception     =   1'b0     ; 
-        end
-        else if(ueie & UEIP) begin
-            ecode_reg     =   31'd8   ;
-            interrupt     =   1'b1     ;
-            exception     =   1'b0     ;    
-        end
-        else if( utie & UTIP) begin
-            ecode_reg     =   31'd4   ;
-            interrupt     =   1'b1     ;
-            exception     =   1'b0     ; 
-        end
-        else if( usie & USIP) begin
-            ecode_reg     =   31'd0    ;
-            interrupt     =   1'b1     ;
-            exception     =   1'b0     ; 
-        end
-        
-        else if(INS_PAGE_FAULT) begin
-            ecode_reg     =   31'd12    ;
+        else if(final_exception) begin
+            ecode_reg     =   final_excep_ecode    ;
             interrupt     =   1'b0     ; 
             exception     =   1'b1     ; 
         end
-        else if(INS_ACC_FAULT) begin
-            ecode_reg     =   31'd1    ;
-            interrupt     =   1'b0     ;
-            exception     =   1'b1     ; 
-        end
-        
-        
-        else if(CSR_CNT == sys_ecall  && curr_prev == mmode) begin
-            ecode_reg     =   31'd11   ;
-            interrupt     =   1'b0     ;
-            exception     =   1'b1     ; 
-        end
-        else if(CSR_CNT == sys_ecall  && curr_prev == smode) begin
-            ecode_reg     =   31'd9    ;
-            interrupt     =   1'b0     ;
-            exception     =   1'b1     ; 
-        end
-        else if(CSR_CNT == sys_ecall  && curr_prev == umode) begin
-            ecode_reg     =   31'd8    ;
-            interrupt     =   1'b0     ;
-            exception     =   1'b1     ; 
-        end
-        else if (ILL_INS|illegal_access) begin
-            ecode_reg     =   31'd2    ;
-            interrupt     =   1'b0     ;
-            exception     =   1'b1     ;        
-        end
-        else if(CSR_CNT == sys_ebreak) begin
-            ecode_reg     =   31'd3    ;
-            interrupt     =   1'b0     ;
-            exception     =   1'b1     ; 
-        end
-        else if(INS_ADDR_MISSALIG) begin
-            ecode_reg     =   31'd0    ;
-            interrupt     =   1'b0     ;
-            exception     =   1'b1     ; 
-        end
-        else if (LD_ADDR_MISSALIG) begin
-            ecode_reg     =   31'd4    ;
-            interrupt     =   1'b0     ;
-            exception     =   1'b1     ; 
-        end
-        else if(STORE_ADDR_MISSALIG) begin
-            ecode_reg     =   31'd6    ;
-            interrupt     =   1'b0     ;
-            exception     =   1'b1     ; 
-        end
-
         else begin
             ecode_reg     =   31'd0     ;     //Must think of default ecode value
             interrupt     =   1'b0     ; 
             exception     =   1'b0     ;
         end
-        if(interrupt) begin
-            if(curr_prev==mmode) begin
-                if(m_ie) begin
-                    interrupt_final     =1'b1   ;
-                    handling_priviledge =mmode  ;
-                end
-                else begin
-                    handling_priviledge = mmode ;
-                    interrupt_final     =1'b0   ;
-                end
-            end
-            else if (curr_prev==smode) begin
-                if(mideleg_reg[ecode_reg]) begin
-                    if( s_ie) begin
-                        interrupt_final = 1'b1          ;
-                        handling_priviledge = smode     ;
-                    end
-                    else begin
-                        interrupt_final = 1'b0          ;
-                        handling_priviledge = smode     ;
-                    end
-                end
-
-                else begin
-                    if(m_ie) begin
-                        interrupt_final          =1'b1   ;
-                        handling_priviledge     =mmode  ;
-                    end
-                    else begin
-                        handling_priviledge = mmode ;
-                        interrupt_final     =1'b0   ;
-                    end
-                end
-            end
-            else begin //umode
-                if(mideleg_reg[ecode_reg]) begin
-                    if(sideleg_reg[ecode_reg]) begin
-                        if( u_ie) begin
-                            interrupt_final = 1'b1          ;
-                            handling_priviledge = umode     ;
-                        end
-                        else begin
-                            interrupt_final = 1'b0          ;
-                            handling_priviledge = umode     ;
-                        end
-                    end
-
-                    else begin
-                        if(s_ie) begin
-                            interrupt_final          =1'b1   ;
-                            handling_priviledge     =smode  ;
-                        end
-                        else begin
-                            handling_priviledge = smode ;
-                            interrupt_final     =1'b0   ;
-                        end
-                    end                 
-
-                end
-
-                else begin
-                    if(m_ie) begin
-                        interrupt_final          =1'b1   ;
-                        handling_priviledge     =mmode  ;
-                    end
-                    else begin
-                        handling_priviledge = mmode ;
-                        interrupt_final     =1'b0   ;
-                    end
-                end
-            end
-        end
-        else begin
-            if(curr_prev==mmode) begin
-                
-                handling_priviledge = mmode ;
-                interrupt_final     =1'b0   ;
-                
-            end
-            else if (curr_prev==smode) begin
-                if(medeleg_reg[ecode_reg]) begin
-
-                    interrupt_final = 1'b0          ;
-                    handling_priviledge = smode     ;
-                end
-                else begin
-                    handling_priviledge = mmode ;
-                    interrupt_final     =1'b0   ;
-                end
-            end
-            else begin //umode
-                if(medeleg_reg[ecode_reg]) begin
-                    if(sedeleg_reg[ecode_reg]) begin
-                        interrupt_final = 1'b0          ;
-                        handling_priviledge = umode     ;
-                    end
-                    else begin
-                        handling_priviledge = smode ;
-                        interrupt_final     =1'b0   ;
-                    end                 
-
-                end
-
-                else begin
-
-                    handling_priviledge = mmode ;
-                    interrupt_final     =1'b0   ;
-                end
-            end
-            
-        end
-        if(interrupt_final)  begin
-            if(handling_priviledge==mmode) begin
-                if (mt_mode==2'b1) begin
-                    PRIV_JUMP_ADD = {mt_base,2'b0}+4*ecode_reg;
-                end
-                else begin
-                    PRIV_JUMP_ADD = {mt_base,2'b0};
-                end
-
-            end
-            else if(handling_priviledge==smode) begin
-                if (st_mode==2'b1) begin
-                    PRIV_JUMP_ADD = {st_base,2'b0}+4*ecode_reg;
-                end
-                else begin
-                    PRIV_JUMP_ADD = {st_base,2'b0};
-                end
-            end
-            else begin
-                if (ut_mode==2'b1) begin
-                    PRIV_JUMP_ADD = {ut_base,2'b0}+4*ecode_reg;
-                end
-                else begin
-                    PRIV_JUMP_ADD = {ut_base,2'b0};
-                end
-            end
-
-        end
-        else if(exception)
-        begin
-            if(handling_priviledge==mmode) begin
-                PRIV_JUMP_ADD = {mt_base,2'b0};
-            end
-            else if(handling_priviledge==smode) begin
-                PRIV_JUMP_ADD = {st_base,2'b0};
-            end
-            else begin
-                PRIV_JUMP_ADD = {ut_base,2'b0};
-            end
-        end
-        else if( CSR_CNT==sys_mret) begin
-            PRIV_JUMP_ADD = mepc_reg;
-        end
-        else if( CSR_CNT==sys_sret) begin
-            PRIV_JUMP_ADD = sepc_reg;
-        end
-        else begin
-            PRIV_JUMP_ADD = uepc_reg;
-        end
-
+       handling_priviledge = hand_priv_final; 
+       PRIV_JUMP_ADD = PRIV_JUMP_FINAL; 
     end
-    integer dump_file;
-    initial dump_file=$fopen("rtllog.log","w");
     //Write to CSR Registers and Increment counters
     always@(posedge CLK)
     begin 
         if(RST) begin
              mcycle_reg <=0;  
         end  
-        // else if(!PROC_IDLE & (CSR_ADDRESS==mcycle) & !(interrupt_final | exception) & csr_op) begin
-        //      mcycle_reg   <= input_data_final        ;
-        // end
         else begin
              mcycle_reg   <= mcycle_reg + 1'b1       ;
         end
@@ -716,17 +478,11 @@ module CSR_FILE (
             fault_while_idle <=0;
             err_addr_while_idle <=0;
         end
-        else if (PROC_IDLE) begin
-			if( LD_PAGE_FAULT|STORE_PAGE_FAULT|LD_ACC_FAULT|STORE_ACC_FAULT) begin
-
-           		fault_while_idle <=1;
-            	err_addr_while_idle <= err_addr;
-            	pc_while_idle <= PC_EX_MEM1;
-            	ecode_while_idle <= ecode_reg;
-			end
-            // if(LD_PAGE_FAULT|STORE_PAGE_FAULT|LD_ACC_FAULT|STORE_ACC_FAULT) begin
-            //     $display("idle page fault");
-            // end
+        else if (PROC_IDLE& final_ld_st_fault) begin
+        	fault_while_idle <=1;
+        	err_addr_while_idle <= err_addr;
+        	pc_while_idle    <= PC_EX_MEM1;
+        	ecode_while_idle <= final_load_store_ecode;
         end
         else begin
             fault_while_idle <=0;
@@ -804,19 +560,15 @@ module CSR_FILE (
             if(minsret_reg == 32'd14_000_000) begin
               //$fsdbDumpvars;
             end
-             //       if(exception) begin 
-             //           if (ecode_reg == 9) begin
-             //     //          $fatal("system call : %h " ,PC);
-             //           end
-             //       end
-            if(interrupt_final|exception) begin
+             
+            if(interrupt|exception) begin
                 if(handling_priviledge==mmode) begin
                     mpp <= curr_prev;
                     mpie <= m_ie;
                     mecode_reg<=ecode_reg;
                     m_ie <=0;
                     curr_prev <= mmode;
-                    minterrupt <= interrupt_final;
+                    minterrupt <= interrupt;
                     if(fault_while_idle) begin
                         mepc_reg <= pc_while_idle;
                         mtval_reg <= err_addr;
@@ -850,16 +602,14 @@ module CSR_FILE (
                         mepc_reg <=PC;
 
                     end
-
-
                 end
-                else if (handling_priviledge==smode) begin
+                else begin
                     spp <= curr_prev;
                     spie <= s_ie;
                     sepc_reg <= PC;
                     s_ie <=0;
                     curr_prev <= smode;
-                    sinterrupt <= interrupt_final;
+                    sinterrupt <= interrupt;
                     secode_reg <= ecode_reg;
 
                     if(fault_while_idle) begin
@@ -896,56 +646,8 @@ module CSR_FILE (
                         sepc_reg <=PC;
 
                     end
-                   
-                    
-                        
-                 
-                end   
-                else begin
-                    upie <= u_ie;
-                    uepc_reg <= PC;
-                    u_ie <=0;
-                    curr_prev <= umode;
-                    sinterrupt <= interrupt_final;
-                    uecode_reg <= ecode_reg ;
-
-                    if(fault_while_idle) begin
-                        uepc_reg <= pc_while_idle;
-                        utval_reg <= err_addr_while_idle;
-                    end
-                    else if((LD_ACC_FAULT|LD_PAGE_FAULT| STORE_PAGE_FAULT| STORE_ACC_FAULT)) begin
-                        uepc_reg <= PC_EX_MEM1;
-                        utval_reg <= err_addr;
-
-                    end
-                    else if(STORE_ADDR_MISSALIG | LD_ADDR_MISSALIG) begin
-                        utval_reg <= ERR_ADDR;
-                        uepc_reg <= PC;
-
-                    end
-                    else if(INS_ACC_FAULT|INS_PAGE_FAULT) begin
-                       utval_reg<=PC;
-                        uepc_reg <=PC;
-
-                    end
-                    else if(INS_ADDR_MISSALIG) begin
-                        utval_reg <= JUMP_ADD;
-                        uepc_reg <= PC;
-
-                    end
-                    else if(ILL_INS|illegal_access) begin
-                        utval_reg <=INS_FB_EX;
-                        uepc_reg <= PC;
-
-                    end
-                    else begin
-                        utval_reg<=0;
-                        uepc_reg <=PC;
-
-                    end
-
                 end
-            end
+            end   
             else if( CSR_CNT == sys_mret) begin
                 curr_prev <= mpp;
                 mpie     <= 1'b1;
@@ -957,37 +659,16 @@ module CSR_FILE (
                 curr_prev <= spp;
                 spie     <= 1'b1;
                 s_ie     <= spie;
-               spp <=0;
+                spp <=0;
 
             end
             else if( CSR_CNT == sys_uret) begin
                 curr_prev <= umode;
                 upie     <= 1'b1;
                 u_ie     <= upie;
-
             end
             else if (csr_op)begin
                 case (CSR_ADDRESS)
-                    ustatus         :   {upie,u_ie}         <=  {
-                                                                input_data_final[4]         ,
-                                                                input_data_final[0]
-                                                                }                           ;
-                    uie            :    {ueie,utie,usie}    <=  {
-                                                                input_data_final[8]         ,
-                                                                input_data_final[4]         ,
-                                                                input_data_final[0]
-                                                                }                           ;
-                    utvec          :    {ut_base,ut_mode}   <=  input_data_final            ;   
-                    uscratch       :    uscratch_reg        <=  input_data_final            ;
-                    uepc           :    uepc_reg            <=  input_data_final            ;
-                    ucause         :    {uinterrupt,
-                                               uecode_reg}  <=  input_data_final            ;
-                    utval          :    utval_reg           <=  input_data_final            ;
-                    uip            :    {ueip,utip,usip}    <=  {
-                                                                input_data_final[8]         ,
-                                                                input_data_final[4]         ,
-                                                                input_data_final[0]
-                                                                }                           ;
                     sstatus        :    {fs,uxl,mxr,sum,spp,spie,
                                         upie,s_ie,u_ie}     <=  {
                                                                 input_data_final[14:13] ,
@@ -999,12 +680,6 @@ module CSR_FILE (
                                                                 }                           ;
                     sedeleg        :    sedeleg_reg         <=  input_data_final            ;
                     sideleg        :    sideleg_reg         <=  input_data_final            ;
-                   // sie            :    {seie,ueie,stie,
-                   //                     utie,ssie,usie}     <=  {
-                   //                                             input_data_final[9:8]       ,
-                   //                                             input_data_final[5:4]       ,
-                   //                                             input_data_final[1:0]
-                   //                                             }                           ;
                     stvec          :    {st_base,st_mode}   <=  input_data_final            ;
                     scounteren     :    {sir,stm,scy}       <=  input_data_final[2:0]       ;
                     sscratch       :    sscratch_reg        <=  input_data_final            ;
@@ -1078,7 +753,6 @@ module CSR_FILE (
                                                                 input_data_final[5:4]       ,
                                                                 input_data_final[1:0]
                                                                 }                           ;
-                    // mcycle         :    mcycle_reg          <=  input_data_final            ;
                     minstret       :    minsret_reg         <=  input_data_final            ;
                     misa           :    misa_reg            <= input_data_final             ;
                    
@@ -1091,7 +765,7 @@ module CSR_FILE (
      
     end
     
-    assign  PRIV_JUMP       = exception | (CSR_CNT==sys_uret) | (CSR_CNT==sys_sret) | (CSR_CNT==sys_mret) | (interrupt_final) & !PROC_IDLE ;
+    assign  PRIV_JUMP       = exception | (CSR_CNT==sys_uret) | (CSR_CNT==sys_sret) | (CSR_CNT==sys_mret) | (interrupt) ;
     assign TIME_INT_WAIT    = STIP & stie & s_ie;
     assign  MPP             =mpp;
     assign  CURR_PREV       =curr_prev;

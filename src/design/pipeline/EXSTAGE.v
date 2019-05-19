@@ -70,6 +70,7 @@ module EXSTAGE(
     input                   ILEGAL,
     input                   OPS_32,
     output                  OP_32_out,
+    output  [63:0]         DCACHE_ADDRESS ,
     input [2:0] LDST_TYPE,
     input           PAGE_FAULT_INS,
     input           PAGE_FAULT_DAT,
@@ -209,7 +210,17 @@ module EXSTAGE(
     end      
     wire satp_update;  
 
-        
+       reg ins_addr_mis_al ; 
+     always@(posedge CLK) begin
+         if(RST) begin
+             ins_addr_mis_al <= 0;
+         end
+         else if (cbranch ? comp_out_w :jump_reg|jumpr_reg) begin
+             ins_addr_mis_al <= &jump_addr_for_non_priv_branch[1:0] ;
+         end
+     end
+
+
     CSR_FILE csr_file(
         .CLK(CLK),
         .PC(PC_FB_EX),
@@ -227,8 +238,7 @@ module EXSTAGE(
         .MSIP(MSIP)  ,
         .RST(RST)   ,
         .ILL_INS(ILEGAL)   ,
-        .INS_ADDR_MISSALIG((cbranch ? comp_out_w :jump_reg|jumpr_reg )? &jump_addr_for_non_priv_branch[1:0]: 0),
-
+        .INS_ADDR_MISSALIG(ins_addr_mis_al),
 
         .INS_ACC_FAULT(ACCESS_FAULT_INS),
         .INS_PAGE_FAULT(PAGE_FAULT_INS),
@@ -248,7 +258,7 @@ module EXSTAGE(
         .STORE_ACC_FAULT(ACCESS_FAULT_DAT & (FAULT_TYPE==2)),
 
 
-        .ERR_ADDR(wb_data),
+        .ERR_ADDR(DCACHE_ADDRESS),
         .MPRV(MPRV),
         .SATP(SATP),
         .CURR_PREV(CURR_PREV),
@@ -303,23 +313,23 @@ rv64m
     begin
         if (1)
         begin
-            cbranch             <= CBRANCH                      ;
-            fun3                <= FUN3                         ;
-            comp_out[beq]       <= COMP1 == COMP2               ; 
-            comp_out[bne]       <= COMP1 != COMP2               ;
-            comp_out[blt]       <= COMP1 < COMP2                ;
-            comp_out[bge]       <= COMP1 >= COMP2               ;
-            comp_out[bltu]      <= COMP1_U < COMP2_U            ;
-            comp_out[bgeu]      <= COMP1_U >= COMP2_U           ;
-            pc_ex_ex2           <= PC_FB_EX                     ;
+            cbranch             = CBRANCH                      ;
+            fun3                = FUN3                         ;
+            comp_out[beq]       = COMP1 == COMP2               ; 
+            comp_out[bne]       = COMP1 != COMP2               ;
+            comp_out[blt]       = COMP1 < COMP2                ;
+            comp_out[bge]       = COMP1 >= COMP2               ;
+            comp_out[bltu]      = COMP1_U < COMP2_U            ;
+            comp_out[bgeu]      = COMP1_U >= COMP2_U           ;
+            pc_ex_ex2           = PC_FB_EX                     ;
                    
-            data_cache_control  <= DATA_CACHE_CONTROL_IN        ;
-            type_out            <= TYPE_IN                      ;
+            data_cache_control  = DATA_CACHE_CONTROL_IN        ;
+            type_out            = TYPE_IN                      ;
             
-            JUMP_ADDR           <= (FENCE|SFENCE_in)? PC_FB_EX+4 : (satp_update?PC_FB_EX :(priv_jump ? priv_jump_add : (JUMP_BUS1+JUMP_BUS2)))    ;  
-            jump_reg            <= JUMP                                                 ;          
-            jumpr_reg           <= JUMPR                                                ;
-            DATA_ADDRESS        <= (A_signed+B_signed)                                  ;
+            JUMP_ADDR           = (FENCE|SFENCE_in)? PC_FB_EX+4 : (satp_update?PC_FB_EX :(priv_jump ? priv_jump_add : (JUMP_BUS1+JUMP_BUS2)))    ;  
+            jump_reg            = JUMP                                                 ;          
+            jumpr_reg           = JUMPR                                                ;
+            DATA_ADDRESS        = (A_signed+B_signed)                                  ;
         end
     end
     reg crd;
@@ -363,7 +373,7 @@ rv64m
              
              if (JUMP_FINAL)
              begin
-                flush_internal      <=    (PC_ID_FB!=JUMP_ADDR) | FENCE  | SFENCE_in|satp_update;
+                flush_internal      <=    (PC_ID_FB!=jump_addr_for_non_priv_branch) | FENCE|SFENCE_in|satp_update|priv_jump;
              end
              else if (STALL_ENABLE_EX & !flush_internal & cache_ready_ex2)
              begin
@@ -394,7 +404,7 @@ rv64m
              ///////////////////////////////////
              if (JUMP_FINAL)
              begin
-                FLUSH               <=    (PC_ID_FB!=JUMP_ADDR) | FENCE| SFENCE_in |satp_update;
+                FLUSH               <=    (PC_ID_FB!=jump_addr_for_non_priv_branch) | FENCE| SFENCE_in |satp_update|priv_jump;
              end
              else if (STALL_ENABLE_EX & !flush_internal & cache_ready_ex2)
              begin
@@ -416,7 +426,7 @@ rv64m
     begin
         if (JUMP_FINAL & CACHE_READY & cache_ready_ex2 )
         begin
-            PREDICTED=(PC_ID_FB==JUMP_ADDR) & ~FENCE & ~SFENCE_in & ~satp_update;
+            PREDICTED=(PC_ID_FB==jump_addr_for_non_priv_branch) & ~FENCE & ~SFENCE_in & ~satp_update&~priv_jump;
         end
         else if (STALL_ENABLE_EX & !flush_internal & cache_ready_ex2 & CACHE_READY)
         begin
@@ -426,15 +436,16 @@ rv64m
         begin
             PREDICTED=1;
         end  
-
-        if( (data_cache_control ) == 2'b01)  begin
-            if((LDST_TYPE==load_hword | LDST_TYPE==load_uhword) & (&wb_data[2:0])) begin
+        end
+     always@(posedge CLK) begin
+        if( (DATA_CACHE_CONTROL ) == 2'b01)  begin
+            if((LDST_TYPE==load_hword | LDST_TYPE==load_uhword) & (&DCACHE_ADDRESS[2:0])) begin
                 load_mis_al =1'b1;
             end
-            else if((LDST_TYPE==load_word | LDST_TYPE==load_uword) & (wb_data[2:0]> 3'b100)) begin
+            else if((LDST_TYPE==load_word | LDST_TYPE==load_uword) & (DCACHE_ADDRESS[2:0]> 3'b100)) begin
                 load_mis_al = 1'b1;
             end
-            else if(LDST_TYPE==load_double & (|wb_data[2:0])) begin
+            else if(LDST_TYPE==load_double & (|DCACHE_ADDRESS[2:0])) begin
                 load_mis_al = 1'b1;
             end
             else begin
@@ -445,14 +456,14 @@ rv64m
         else begin
             load_mis_al =1'b0;
         end
-        if( (data_cache_control ) == 2'b10)  begin
-            if((LDST_TYPE==store_hword) & (&wb_data[2:0])) begin
+        if( DATA_CACHE_CONTROL  == 2'b10)  begin
+            if((LDST_TYPE==store_hword) & (&DCACHE_ADDRESS[2:0])) begin
                 store_mis_al =1'b1;
             end
-            else if((LDST_TYPE==store_word) & (wb_data[2:0]> 3'b100)) begin
+            else if((LDST_TYPE==store_word) & (DCACHE_ADDRESS[2:0]> 3'b100)) begin
                 store_mis_al = 1'b1;
             end
-            else if(LDST_TYPE==store_double & (|wb_data[2:0])) begin
+            else if(LDST_TYPE==store_double & (|DCACHE_ADDRESS[2:0])) begin
                 store_mis_al = 1'b1;
             end
             else begin
@@ -465,7 +476,7 @@ rv64m
         end
     end
     
-    assign JUMP_FINAL           = ((SFENCE_in|FENCE|satp_update) ? 1:((priv_jump ? priv_jump : (cbranch ? comp_out_w :jump_reg|jumpr_reg )))) & !flush_internal   ; 
+    assign JUMP_FINAL           = (SFENCE_in|FENCE|satp_update | priv_jump  | (cbranch ? comp_out_w : 0) | jump_reg|jumpr_reg ) & !flush_internal   ; 
     assign WB_DATA              =  wb_data                                                          ;
     assign DATA_CACHE_CONTROL   = data_cache_control & {2{!flush_internal}}   & {2{!priv_jump}}           & {2{!satp_update}}                         ;
     assign TYPE_OUT             = type_out & {2{!flush_internal}} & {2{!priv_jump}}       & {2{!satp_update}}                                   ;
@@ -476,4 +487,5 @@ rv64m
     assign OP_32_out       =  OPS_32 & !flush_internal;
     assign SFENCE          = SFENCE_in & !flush_internal;
     assign LOAD_WORD       = (LDST_TYPE!=load_double);
+    assign DCACHE_ADDRESS  = A+B;
 endmodule
