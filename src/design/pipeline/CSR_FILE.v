@@ -403,7 +403,7 @@ module CSR_FILE (
        wire [5:0] load_page_ecode = LD_PAGE_FAULT ?13:0;
        wire [5:0] store_page_ecode = STORE_PAGE_FAULT?15:0;
        wire [5:0] final_load_store_ecode = load_ac_ecode | load_page_ecode | store_ac_ecode| store_page_ecode;
-       wire final_ld_st_fault = LD_ACC_FAULT| STORE_ACC_FAULT| LD_PAGE_FAULT | LD_ACC_FAULT;
+       wire final_ld_st_fault = LD_ACC_FAULT| STORE_ACC_FAULT| LD_PAGE_FAULT | STORE_PAGE_FAULT;
 
        wire software_inter = (ssie & SSIP);
        wire timer_inter =   (stie & STIP);
@@ -485,7 +485,7 @@ module CSR_FILE (
         	pc_while_idle    <= PC_EX_MEM1;
         	ecode_while_idle <= final_load_store_ecode;
         end
-        else begin
+        else if (!PROC_IDLE) begin
             fault_while_idle <=0;
         end
         
