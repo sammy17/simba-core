@@ -766,7 +766,7 @@ module CSR_FILE (
      
     end
     
-    assign  PRIV_JUMP       = (exception | (CSR_CNT==sys_uret) | (CSR_CNT==sys_sret) | (CSR_CNT==sys_mret) | (interrupt) )&INS_VALID_FB_EX;
+    assign  PRIV_JUMP       = exception | (CSR_CNT==sys_uret) | (CSR_CNT==sys_sret) | (CSR_CNT==sys_mret) | (interrupt) &INS_VALID_FB_EX;
     assign TIME_INT_WAIT    = STIP & stie & s_ie;
     assign  MPP             =mpp;
     assign  CURR_PREV       =curr_prev;
