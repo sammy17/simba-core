@@ -71,6 +71,7 @@ module DTLB
     localparam ITER_1      = 1;
     localparam ITER_2      = 2;
     localparam ITER_3      = 3;
+
     reg                     tlb_flush_reg;
     reg  [1             :0] op_type_reg;
     reg  [1             :0] mpp_reg;
@@ -87,6 +88,7 @@ module DTLB
     reg  [TLB_ADDR_WIDTH-1 : 0] pa_mem_waddr;
     reg  [PPN_LEN-1        : 0] pa_mem_data_in;
     wire [PPN_LEN-1        : 0] pa_mem_data_out;
+    reg [PPN_LEN-1        : 0] pa_mem_data_out_reg;
      (* mark_debug="true" *) wire            dirty_out;
     reg             dirty_in;
     reg             writable_in;
@@ -144,6 +146,12 @@ module DTLB
      (* mark_debug="true" *) wire        pte_r;
     (* mark_debug="true" *) wire        pte_v;
 
+
+    reg translation_off_reg;
+    reg tlb_hit_reg;
+    reg page_fault_comb_reg;
+    
+    
     assign {pte_reserved,pte_ppn2,pte_ppn1,pte_ppn0,pte_rsw,pte_d,pte_a,pte_g,pte_u,pte_x,pte_w,pte_r,pte_v} = DATA_FROM_AXIM;
 
     reg  [DATA_WIDTH-1  :0] satp_reg;
@@ -157,25 +165,27 @@ module DTLB
     begin
         PHY_ADDR_VALID = tlb_addr_valid ;
     end
-
+    reg valid_wren_d1;
     always @(posedge CLK) begin
         if (RST) begin
             virt_addr_reg        <=   virt_addr_init;
+             translation_off_reg <= 1;
             op_type_reg          <=   init_op;
             satp_reg         <=   0;
             mpp_reg      <=   0; // mpp intial value * should check
             mprv_reg         <=   0;
             curr_prev_reg    <=   mmode; // *should check       
             tlb_flush_reg<=0;
+            off_translation_from_tlb_reg <= 0; //additional
             wstrb_in_reg <=0;
             data_in_reg <=0;
             amo_in_reg <=0;
             op32_in_reg <=0;
             flush_in_reg<=0;
             LWORD_OUT <=0;
-
         end
         else if (tlb_addr_valid & VIRT_ADDR_VALID &  CACHE_READY) begin
+            translation_off_reg <= translation_off;
             virt_addr_reg        <=   VIRT_ADDR; 
             op_type_reg          <=   OP_TYPE;
             satp_reg         <=   SATP;
@@ -194,6 +204,21 @@ module DTLB
         else
             tlb_flush_reg <=0;    
     end
+    always @(posedge CLK) begin
+        if (RST) begin
+           
+            tlb_hit_reg <= 0;
+            page_fault_comb_reg <= 0;
+            pa_mem_data_out_reg <=0;
+            valid_wren_d1 <=0;
+        end
+        else if(CACHE_READY) begin
+            pa_mem_data_out_reg <= pa_mem_data_out;
+            tlb_hit_reg <= tlb_hit;
+            page_fault_comb_reg <= page_fault_comb;
+            valid_wren_d1 <= valid_wren;
+        end
+    end
 
     always@(posedge CLK)
     begin
@@ -207,7 +232,7 @@ module DTLB
             ACCESS_FAULT            <=0;
             fault_type_reg          <=0;
         end
-        else if (~tlb_addr_valid & ~valid_wren )begin   //check whether cache ready and make sure flag goes 0 one cycle before data get written
+        else if (~tlb_addr_valid & ~valid_wren & ~valid_wren_d1 )begin   //check whether cache ready and make sure flag goes 0 one cycle before data get written
             if(~addr_to_axim_valid_reg & (state == IDLE) & VIRT_ADDR_VALID )begin
                 addr_to_axim_valid_reg    <= 1;
                 addr_to_axim_reg          <= {8'd0,satp_ppn,vpn2,3'd0}; // calculate the AXI address from SATP
@@ -217,13 +242,13 @@ module DTLB
                 if (DATA_FROM_AXIM_VALID)begin
                     if(~pte_v)begin
                         addr_to_axim_valid_reg  <= 0;
-                        page_fault_reg      <= 1;
-                        fault_type_reg      <= op_type_reg;
-                        state           <= IDLE;
+                        page_fault_reg          <= 1;
+                        fault_type_reg          <= op_type_reg;
+                        state                   <= IDLE;
                     end
                     else if(pte_r | pte_x) begin // some other conditions are there for page fault
                         addr_to_axim_valid_reg    <= 0;
-                        if(~pte_a | ((op_type_reg == 2) & ~(pte_d&pte_w))) begin
+                        if(~pte_a | ((op_type_reg == 2) & ~(pte_d & pte_w))) begin
                            page_fault_reg <= 1;
                            fault_type_reg <= op_type_reg;
                            state          <= IDLE;
@@ -244,7 +269,7 @@ module DTLB
                                 state                     <= ITER_3;
                     end
                     else begin
-                                addr_to_axim_valid_reg    <= 0;
+                        addr_to_axim_valid_reg    <= 0;
                         page_fault_reg        <= 1;
                         fault_type_reg        <= op_type_reg;
                         state             <= IDLE;
@@ -285,7 +310,7 @@ module DTLB
              end
     end
     else begin
-        pa_mem_wren            <= 0;
+                pa_mem_wren            <= 0;
                 tag_mem_wren           <= 0;
                 valid_wren             <= 0;    
     end
@@ -342,21 +367,39 @@ module DTLB
         .DATA(1'b1)  
      );
 
-    assign pa_mem_raddr   = virt_addr_reg[PAGE_OFFSET_WIDTH+:TLB_ADDR_WIDTH];
-    assign tag_mem_raddr  = virt_addr_reg[PAGE_OFFSET_WIDTH+:TLB_ADDR_WIDTH];
-    assign valid_raddr    = virt_addr_reg[PAGE_OFFSET_WIDTH+:TLB_ADDR_WIDTH];
-    assign CURR_ADDR      = virt_addr_reg;
 
-    assign translation_off=off_translation_from_tlb_reg| ((satp_mode == 0) | ((satp_mode == 8) & (curr_prev_reg == mmode) & ~mprv_reg) | ((satp_mode == 8) & (curr_prev_reg == mmode) & mprv_reg & (op_type_reg == 3)) | (mprv_reg & (mpp_reg == mmode)))| (op_type_reg == 0);
+    wire  [ADDR_WIDTH-1 :0] virt_addr_mux_out;
 
-    assign tlb_hit        = ((tag_mem_data_out == virt_addr_reg[(PAGE_OFFSET_WIDTH+TLB_ADDR_WIDTH) +: ((3*VPN_LEN)-TLB_ADDR_WIDTH)]) & valid_out);
+    
+    assign virt_addr_mux_out                =  (tlb_addr_valid)  ? VIRT_ADDR : virt_addr_reg;
+    // assign off_translation_from_tlb_mux_out =  (tlb_hit_reg)  ? OFF_TRANSLATION_FROM_TLB : off_translation_from_tlb_reg;
+    // assign mprv_mux_out                     =  (tlb_hit_reg)  ? MPRV : mprv_reg;
+    // assign mpp_mux_out                      =  (tlb_hit_reg)  ? MPP : mpp_reg;
+    // assign curr_prev_mux_out                =  (tlb_hit_reg)  ? CURR_PREV : curr_prev_reg;
+    // assign op_type_mux_out                  =  (tlb_hit_reg)  ? OP_TYPE : op_type_reg;
+    // assign satp_mode_mux_out                =  (tlb_hit_reg)  ? SATP[DATA_WIDTH-1 -: MODE_LEN] : satp_mode;
+    
+    assign pa_mem_raddr                     = virt_addr_mux_out[PAGE_OFFSET_WIDTH+:TLB_ADDR_WIDTH];
+    assign tag_mem_raddr                    = virt_addr_mux_out[PAGE_OFFSET_WIDTH+:TLB_ADDR_WIDTH];
+    assign valid_raddr                      = virt_addr_mux_out[PAGE_OFFSET_WIDTH+:TLB_ADDR_WIDTH];
+    assign CURR_ADDR                        = virt_addr_reg;
 
-    assign page_fault_comb= (~translation_off & tlb_hit & (op_type_reg == 2) & ~(dirty_out&writable));
-    assign PAGE_FAULT     = page_fault_reg | page_fault_comb;
-    assign FAULT_TYPE     = page_fault_comb ? 2: fault_type_reg;
+    
 
-    assign PHY_ADDR       = translation_off ? virt_addr_reg : {pa_mem_data_out,page_offset};
-    assign tlb_addr_valid = translation_off | tlb_hit | PAGE_FAULT | ACCESS_FAULT;
+    
+    assign translation_off= OFF_TRANSLATION_FROM_TLB | ((SATP[DATA_WIDTH-1 -: MODE_LEN] == 0) | ((SATP[DATA_WIDTH-1 -: MODE_LEN] == 8) & (CURR_PREV == mmode) & ~MPRV) | ((SATP[DATA_WIDTH-1 -: MODE_LEN] == 8) & (CURR_PREV == mmode) & MPRV & (OP_TYPE == 3)) | (MPRV & (MPP == mmode)))| (OP_TYPE == 0);
+
+    assign tlb_hit        = ((tag_mem_data_out == virt_addr_mux_out[(PAGE_OFFSET_WIDTH+TLB_ADDR_WIDTH) +: ((3*VPN_LEN)-TLB_ADDR_WIDTH)]) & valid_out);
+
+    assign page_fault_comb= (~translation_off & tlb_hit & (OP_TYPE == 2) & ~(dirty_out & writable));
+    
+    
+    
+    assign PAGE_FAULT     = page_fault_reg | page_fault_comb_reg;
+    assign FAULT_TYPE     = page_fault_comb_reg ? 2: fault_type_reg;
+
+    assign PHY_ADDR       = translation_off_reg ? virt_addr_reg : {pa_mem_data_out_reg,page_offset};
+    assign tlb_addr_valid = translation_off_reg | tlb_hit_reg | PAGE_FAULT | ACCESS_FAULT;
 
     assign ADDR_TO_AXIM_VALID     = addr_to_axim_valid_reg;
     assign ADDR_TO_AXIM           = addr_to_axim_reg;
@@ -367,7 +410,8 @@ module DTLB
     assign FLUSH_OUT = flush_in_reg & PHY_ADDR_VALID;
     assign OP32_OUT = op32_in_reg;
     assign VIRT_ADDR_OUT = virt_addr_reg; 
-    assign COMB_PAGE_FAULT = page_fault_comb;
+    assign COMB_PAGE_FAULT = page_fault_comb_reg;
+
     function integer logb2;
         input integer depth;
         for (logb2 = 0; depth > 1; logb2 = logb2 + 1)
@@ -375,6 +419,3 @@ module DTLB
     endfunction
 
 endmodule
-
-
-
