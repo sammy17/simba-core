@@ -485,7 +485,7 @@ module Dcache
         begin
             begin
                 cache_porta_wren    <= 1                ;
-                cache_porta_data_in <= control_d3 == 2'b10 ? cache_porta_data_in_int  : DATA_FROM_L2     ;
+                cache_porta_data_in <= DATA_FROM_L2     ;
                 cache_porta_waddr   <= cache_porta_raddr;
                 tag_porta_wren      <= 1                ;
                 tag_porta_waddr     <= tag_porta_raddr  ;
@@ -798,7 +798,7 @@ module Dcache
             cache_porta_data_in_d1 <= cache_porta_data_in;
             addr_d5 <= addr_d4;
 			dep1 <= addr_d2[offset_width+line_width-1:offset_width]==addr_d3[offset_width+line_width-1:offset_width];
-			dep2 <= addr_d3[offset_width+line_width-1:offset_width]==addr_d4[offset_width+line_width-1:offset_width];
+			dep2 <= addr_d2[offset_width+line_width-1:offset_width]==addr_d4[offset_width+line_width-1:offset_width];
         end
     end
 	wire [offset_width+line_width-1:offset_width] read_addr_mux_out = cache_ready?addr_d2[offset_width+line_width-1:offset_width]: addr_d3[offset_width+line_width-1:offset_width];
