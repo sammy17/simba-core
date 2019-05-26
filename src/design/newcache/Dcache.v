@@ -787,23 +787,33 @@ module Dcache
 	end
 	reg dep1;
 	reg dep2;
+	reg no_dep;
+	wire dirty_wren_wire = (cache_ready & control_d3 == 2'b10 &ADDR_VALID & ~peri_access_d3 & !access_fault_d4 & !page_fault_d4);
+	wire dep1_wire = (addr_d2[offset_width+line_width-1:offset_width]==addr_d3[offset_width+line_width-1:offset_width])&dirty_wren_wire;
+	wire dep2_wire = ~dep1_wire & ((addr_d2[offset_width+line_width-1:offset_width]==addr_d4[offset_width+line_width-1:offset_width])&dirty_wren);
+	wire no_dep_wire = ~(dep1_wire | dep2_wire);
+
     always@(posedge CLK) begin
         if(RST) begin
             dirty_wren_d1<= 0;    
 			dep1 <= 0;
 			dep2 <= 0;
+			no_dep <= 0;
         end
         else begin
             dirty_wren_d1 <= dirty_wren;
             cache_porta_data_in_d1 <= cache_porta_data_in;
             addr_d5 <= addr_d4;
-			dep1 <= addr_d2[offset_width+line_width-1:offset_width]==addr_d3[offset_width+line_width-1:offset_width];
-			dep2 <= addr_d2[offset_width+line_width-1:offset_width]==addr_d4[offset_width+line_width-1:offset_width];
+			dep1 <= dep1_wire;
+			dep2 <=   dep2_wire;
+			no_dep <= no_dep_wire;
         end
     end
 	wire [offset_width+line_width-1:offset_width] read_addr_mux_out = cache_ready?addr_d2[offset_width+line_width-1:offset_width]: addr_d3[offset_width+line_width-1:offset_width];
-		
-    assign cache_porta_data_out =   (((dirty_wren & dep1))? cache_porta_data_in:((dirty_wren_d1 & dep2)? cache_porta_data_in_d1: cache_porta_data_out_i));
+	wire [cache_width -1:0] cache_dep1 =  dep1 ? cache_porta_data_in : 0;		
+	wire [cache_width -1:0] cache_dep2 =  dep2 ? cache_porta_data_in_d1 : 0;		
+	wire [cache_width -1:0] cache_no_dep =  no_dep? cache_porta_data_out_i : 0;		
+    assign cache_porta_data_out =  cache_dep1|cache_dep2|cache_no_dep;
 
     assign cache_porta_raddr    = ~flush_d3? read_addr_mux_out: flush_addr           ;
     assign dirty_raddr          = cache_porta_raddr                                         ;
