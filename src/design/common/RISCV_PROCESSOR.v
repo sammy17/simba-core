@@ -22,9 +22,9 @@
 module RISCV_PROCESSOR#(
     parameter instruction_width     = 32                                          ,
     parameter address_width         = 64                                           ,
-    parameter block_size            = 4                                           ,
-    parameter cache_depth           = 256                                          ,
-    parameter block_size_dat        = 2,
+    parameter block_size            = 16,
+    parameter cache_depth           = 128                                          ,
+    parameter block_size_dat        = 8,
     parameter l2_delay_read         = 10                                           ,
     localparam line_width           = $clog2(cache_depth)                          ,
     localparam offset_width         = $clog2(instruction_width*block_size/8 )               ,

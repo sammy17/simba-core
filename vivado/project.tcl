@@ -125,4 +125,18 @@ save_bd_design
 regenerate_bd_layout
 disconnect_bd_net /rst_ps7_0_100M_peripheral_aresetn [get_bd_pins RISCV_PROCESSOR_0/m01_axi_aresetn]
 connect_bd_net [get_bd_pins RISCV_PROCESSOR_0/m01_axi_aresetn] [get_bd_pins axi_gpio_0/gpio_io_o]
+update_compile_order -fileset sources_1
+startgroup
+set_property -dict [list CONFIG.CONST_VAL {0}] [get_bd_cells xlconstant_0]
+endgroup
+startgroup
+set_property -dict [list CONFIG.PCW_FPGA0_PERIPHERAL_FREQMHZ {100.000000}] [get_bd_cells processing_system7_0]
+endgroup
 save_bd_design
+make_wrapper -files [get_files /home/vithurson/simba-core/vivado/soc/riscv_soc.srcs/sources_1/bd/risv_soc/risv_soc.bd] -top
+add_files -norecurse /home/vithurson/simba-core/vivado/soc/riscv_soc.srcs/sources_1/bd/risv_soc/hdl/risv_soc_wrapper.v
+launch_runs impl_1 -to_step write_bitstream -jobs 6
+wait_on_run impl_1
+file mkdir /home/vithurson/simba-core/vivado/soc/riscv_soc.sdk
+file copy -force /home/vithurson/simba-core/vivado/soc/riscv_soc.runs/impl_1/risv_soc_wrapper.sysdef /home/vithurson/simba-core/vivado/soc/riscv_soc.sdk/risv_soc_wrapper.hdf
+launch_sdk -workspace /home/vithurson/simba-core/vivado/soc/riscv_soc.sdk -hwspec /home/vithurson/simba-core/vivado/soc/riscv_soc.sdk/risv_soc_wrapper.hdf

@@ -785,19 +785,25 @@ module Dcache
 			cache_hit_reg <= cache_hit;
 		end
 	end
+	reg dep1;
+	reg dep2;
     always@(posedge CLK) begin
         if(RST) begin
             dirty_wren_d1<= 0;    
+			dep1 <= 0;
+			dep2 <= 0;
         end
         else begin
             dirty_wren_d1 <= dirty_wren;
             cache_porta_data_in_d1 <= cache_porta_data_in;
             addr_d5 <= addr_d4;
+			dep1 <= addr_d2[offset_width+line_width-1:offset_width]==addr_d3[offset_width+line_width-1:offset_width];
+			dep2 <= addr_d3[offset_width+line_width-1:offset_width]==addr_d4[offset_width+line_width-1:offset_width];
         end
     end
 	wire [offset_width+line_width-1:offset_width] read_addr_mux_out = cache_ready?addr_d2[offset_width+line_width-1:offset_width]: addr_d3[offset_width+line_width-1:offset_width];
 		
-    assign cache_porta_data_out = DATA_FROM_L2_VALID ? DATA_FROM_L2 :  (((dirty_wren & addr_d3[offset_width+line_width-1:offset_width]==addr_d4[offset_width+line_width-1:offset_width]))? cache_porta_data_in:((dirty_wren_d1 & addr_d3[offset_width+line_width-1:offset_width]==addr_d5[offset_width+line_width-1:offset_width])? cache_porta_data_in_d1: cache_porta_data_out_i));
+    assign cache_porta_data_out =   (((dirty_wren & dep1))? cache_porta_data_in:((dirty_wren_d1 & dep2)? cache_porta_data_in_d1: cache_porta_data_out_i));
 
     assign cache_porta_raddr    = ~flush_d3? read_addr_mux_out: flush_addr           ;
     assign dirty_raddr          = cache_porta_raddr                                         ;
