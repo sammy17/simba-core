@@ -28,7 +28,7 @@ module peripheral_master(
 	output reg M_AXI_RREADY                    ,
 	input [7:0]   WSTRB               ,
 	input [31:0] M_AXI_RDATA 		,
-	output INTERUPT			
+	output reg INTERUPT			
 );
 `define CLINT_ADDR 32'h2000000
 `define MTIME_ADDR 32'hbff8
@@ -45,7 +45,6 @@ reg word_access;
 (* mark_debug = "true" *) reg [2:0]  master_state;
 (* mark_debug = "true" *) reg [63:0] mtime_reg;
 (* mark_debug = "true" *) reg [63:0] mtime_comp_reg;
-assign INTERUPT = mtime_reg > mtime_comp_reg;
 always@(posedge M_AXI_ACLK) begin
 	if(~M_AXI_ARESETN) begin
 		mtime_reg <=0;
@@ -64,8 +63,10 @@ always@(posedge M_AXI_ACLK) begin
 		M_AXI_WDATA <=0;
 		M_AXI_RREADY <=0;
 		master_state <=idle;
+        INTERUPT <= 0;
 	end
 	else begin
+        INTERUPT <= mtime_reg > mtime_comp_reg;
 		mtime_reg <= mtime_reg+1;
 		case(master_state)
 			idle: begin

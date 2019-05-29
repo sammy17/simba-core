@@ -80,7 +80,9 @@ module CSR_FILE (
     input [31:0] INS_FB_EX,
     output reg satp_update,
     output TIME_INT_WAIT,
-    input INS_VALID_FB_EX
+    input INS_VALID_FB_EX,
+    input FLUSH_INTERNAL,
+    input CACHE_READY_DATA
                       
     );  
     
@@ -280,21 +282,21 @@ module CSR_FILE (
                             end
 
         endcase
-        
-        if(csr_op ) begin
-            if (curr_prev<CSR_ADDRESS[9:8]) begin
-                illegal_access = 1'b1;
-            end
-            else if((CSR_ADDRESS[11:10] == 2'b11) & ((ZIMM!=5'b0)| (CSR_CNT==sys_csrrwi) | (CSR_CNT==sys_csrrw))) begin
-                illegal_access = 1'b1;
-            end
-            else begin
-                illegal_access = 1'b0;
-            end
-        end
-        else begin
-            illegal_access = 1'b0;
-        end
+     illegal_access = 1'b0;   
+     //   if(csr_op ) begin
+     //       if (curr_prev<CSR_ADDRESS[9:8]) begin
+     //           illegal_access = 1'b1;
+     //       end
+     //       else if((CSR_ADDRESS[11:10] == 2'b11) & ((ZIMM!=5'b0)| (CSR_CNT==sys_csrrwi) | (CSR_CNT==sys_csrrw))) begin
+     //           illegal_access = 1'b1;
+     //       end
+     //       else begin
+     //           illegal_access = 1'b0;
+     //       end
+     //   end
+     //   else begin
+     //       illegal_access = 1'b0;
+     //   end
 
     end
     
@@ -472,7 +474,7 @@ module CSR_FILE (
         if(RST) begin
              mcycle_reg <=0;  
         end  
-        else begin
+        else if(!FLUSH_INTERNAL & CACHE_READY_DATA) begin
              mcycle_reg   <= mcycle_reg + 1'b1       ;
         end
         if(RST) begin
@@ -554,6 +556,7 @@ module CSR_FILE (
              
             
             err_addr <=ERR_ADDR;
+         
             minsret_reg <= minsret_reg + 1'b1   ;
             if(minsret_reg%100000==0) begin
                 $display(minsret_reg, " %h %h",PC,INS_FB_EX);

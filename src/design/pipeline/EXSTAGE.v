@@ -86,7 +86,8 @@ module EXSTAGE(
     (* mark_debug="true" *) output SFENCE,
     output LOAD_WORD,
     input CACHE_READY_INS,
-    input INS_VALID_FB_EX
+    input INS_VALID_FB_EX,
+    input CACHE_READY_DATA
      
     );
     //     reg        comp_out;
@@ -225,7 +226,7 @@ module EXSTAGE(
         .CLK(CLK),
         .PC(PC_FB_EX),
         .CSR_CNT(CSR_CNT),
-        .CSR_ADDRESS(A[11:0]),
+        .CSR_ADDRESS(INS_FB_EX[31:20]),
         .RS1_DATA(COMP1),
         .ZIMM(ZIMM),
         .OUTPUT_DATA(csr_out),
@@ -270,7 +271,9 @@ module EXSTAGE(
         .INS_FB_EX(INS_FB_EX),
         .satp_update(satp_update),
         .TIME_INT_WAIT(TIME_INT_WAIT),
-        .INS_VALID_FB_EX(INS_VALID_FB_EX)
+        .INS_VALID_FB_EX(INS_VALID_FB_EX),
+        .FLUSH_INTERNAL(0),
+        .CACHE_READY_DATA(1)
 
         );
         

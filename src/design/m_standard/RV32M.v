@@ -135,14 +135,17 @@ module RV32M #(
                 out_reg = remainder_out;
            endcase  
         end
-         
-        always@(*)
+        
+        always@(posedge CLK)
         begin 
-           if( (m_cnt_prev==M_CNT) & (rs1_prev==RS1) & (rs2_prev==RS2) & !STALL ) 
+           if(RST) begin
+               stable <= 1'b0;
+           end
+           else if((division_type| multiplication_type) &  !STALL  & ~stable & ~ready_internal ) 
            begin    
                stable  <= 1'b1                         ;                             
            end
-           else
+           else if (ready_internal)
            begin
                stable  <= 1'b0                         ;     
            end                                 
@@ -156,19 +159,24 @@ module RV32M #(
                 rs2_prev     <=  0                        ;
                 
                 OUT         <= 0                      ; 
-                valid_reg   <=  1      ;
+                valid_reg   <=  0      ;
             end
-            if(START)
+            else if(START)
             begin
                 m_cnt_prev   <=  M_CNT                      ;
                 rs1_prev     <=  RS1                        ;
                 rs2_prev     <=  RS2                        ;
                
                 OUT         <= out_reg                      ; 
-                valid_reg   <= ready_internal & stable      ;
+                if(stable & ~valid_reg) begin
+                    valid_reg   <= ready_internal       ;
+                end
+                else begin
+                    valid_reg <= 1'b0;
+                end
             end
         end
            
-        assign READY    = valid_reg & stable            ;
+        assign READY    = valid_reg             ;
         
 endmodule
