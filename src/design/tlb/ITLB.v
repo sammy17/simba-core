@@ -254,7 +254,7 @@ module ITLB
                 tag_mem_waddr  <= tag_mem_raddr;
                 valid_wren     <= 1;
                 valid_waddr    <= valid_raddr;
-                tag_mem_data_in<= virt_addr_reg[(PAGE_OFFSET_WIDTH+TLB_ADDR_WIDTH) +: ((LEVELS*VPN_LEN)-TLB_ADDR_WIDTH)];
+                tag_mem_data_in<= virt_addr_reg_d1[(PAGE_OFFSET_WIDTH+TLB_ADDR_WIDTH) +: ((LEVELS*VPN_LEN)-TLB_ADDR_WIDTH)];
                 if     (state == ITER_1) {pa_mem_data_in,dirty_in} <= {pte_ppn2,vpn1,vpn0,pte_d};
         else if(state == ITER_2) {pa_mem_data_in,dirty_in} <= {pte_ppn2,pte_ppn1,vpn0,pte_d};
         else if(state == ITER_3) {pa_mem_data_in,dirty_in} <= {pte_ppn2,pte_ppn1,pte_ppn0,pte_d};
