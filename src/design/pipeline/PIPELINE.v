@@ -501,19 +501,16 @@ module PIPELINE #(
         if(RST) begin
             stip <=0;
         end
-//`        if(~exstage.satp_update & ~(exstage.PAGE_FAULT_INS) & ~(exstage.PROC_IDLE) & stall_enable_fb_ex & |pc_fb_ex & ~fence_fb_ex & ~exstage.csr_file.interrupt) begin
-//`               $fgets(values,read_file);
-//`               $fgets(wb_datas,wb_file);
-//`               $fgets(interr,tip_file);
-//`               stip <= interr.atohex();
-//`               if(((pc_fb_ex !== values.atohex())|(alu_out_wire !== wb_datas.atohex()))&!cbranch_fb_ex & |rd_fb_ex &(ins_fb_ex[31:20]!=32'hc01 | !exstage.csr_file.csr_op)) begin
-//`                   $fatal("seqeunce fail expected PC : %h comming PC %h wb %h %h",values.atohex(),pc_fb_ex,wb_datas.atohex(),alu_out_wire,$time*1000);
-//`               end
-//`               if(pc_fb_ex != values.atohex()) begin
-//`                   $fatal("pc mismatch %h %h",values.atohex(),pc_fb_ex);
-//`               end
-//`
- //       end
+//        if(~exstage.satp_update & ~(exstage.PAGE_FAULT_INS) & ~(exstage.PROC_IDLE) & stall_enable_fb_ex & |pc_fb_ex & ~fence_fb_ex & ~exstage.csr_file.interrupt) begin
+//               $fgets(values,read_file);
+//               $fgets(wb_datas,wb_file);
+//               $fgets(interr,tip_file);
+//               stip <= interr.atohex();
+//               if(((pc_fb_ex !== values.atohex())|(alu_out_wire !== wb_datas.atohex()))&!cbranch_fb_ex & |rd_fb_ex &(ins_fb_ex[31:20]!=32'hc01 | !exstage.csr_file.csr_op)) begin
+//                   $fatal("seqeunce fail expected PC : %h comming PC %h wb %h %h",values.atohex(),pc_fb_ex,wb_datas.atohex(),alu_out_wire,$time*1000);
+//               end
+//
+//        end
 ////           
         if(!( CACHE_READY && CACHE_READY_DATA && !flush_internal) & PAGE_FAULT_DAT & !COMB_PAGE_FAULT) begin
             page_load_fault_reg <=1;
@@ -791,13 +788,13 @@ module PIPELINE #(
             rd_ex_mem1               <=    rd_ex_ex2                ;             
             pc_ex_mem1               <=    pc_fb_ex                 ;                                              
             imm_fb_ex                <=    imm_out_id_fb            ;    
-//            if (ins_fb_ex[31:20]!=32'hc01 | !exstage.csr_file.csr_op) begin
-            alu_ex_mem1              <=    alu_out_wire             ;
+            //if (ins_fb_ex[31:20]!=32'hc01 | !exstage.csr_file.csr_op) begin
+               alu_ex_mem1              <=    alu_out_wire             ;
 
- //           end
- //           else begin
- //                alu_ex_mem1           <= wb_datas.atohex()        ; 
- //           end
+           // end
+           // else begin
+           //      alu_ex_mem1           <= wb_datas.atohex()        ; 
+           // end
             pc_ex_mem1               <=      pc_fb_ex               ;            
             op_type_ex_mem1          <=      op_type_ex_ex2         ;   
 
@@ -877,7 +874,7 @@ module PIPELINE #(
     assign BRANCH               = (jump_fb_ex |cbranch_fb_ex  |jumpr_fb_ex | fence_fb_ex) &  ! flush_internal ;  
     assign FLUSH                = flush_internal                                    ;
     assign BRANCH_TAKEN         = branch_taken                                      ;
-    assign PIPELINE_STALL       = (stall_enable_id_fb  ||  branch_taken ||flush_e || flush_e_i ) & CACHE_READY_DATA  ;
+    assign PIPELINE_STALL       = (stall_enable_id_fb  ||  branch_taken ||flush_e || flush_e_i || ~CACHE_READY) & CACHE_READY_DATA  ;
     assign c1_mux_final         = rs1_final                                         ; 
     assign c2_mux_final         = rs2_final                                         ;
     assign jmux1_final          = imm_out_id_fb                                     ;
