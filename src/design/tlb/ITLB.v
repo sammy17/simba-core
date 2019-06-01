@@ -359,7 +359,7 @@ module ITLB
    
 assign translation_off=off_translation_from_tlb_reg| ((satp_mode == 0) | ((satp_mode == 8) & (curr_prev_reg == mmode) & ~mprv_reg) | ((satp_mode == 8) & (curr_prev_reg == mmode) & mprv_reg & (op_type_reg == 3)) | (mprv_reg & (mpp_reg == mmode)))| (op_type_reg == 0);
 
-    assign tlb_hit        = ((tag_mem_data_out == virt_addr_reg[(PAGE_OFFSET_WIDTH+TLB_ADDR_WIDTH) +: ((3*VPN_LEN)-TLB_ADDR_WIDTH)]) & valid_out);
+    assign tlb_hit        = ((tag_mem_data_out == (tlb_addr_valid_reg? virt_addr_reg[(PAGE_OFFSET_WIDTH+TLB_ADDR_WIDTH) +: ((3*VPN_LEN)-TLB_ADDR_WIDTH)] : virt_addr_reg_d1[(PAGE_OFFSET_WIDTH+TLB_ADDR_WIDTH) +: ((3*VPN_LEN)-TLB_ADDR_WIDTH)])) & valid_out);
 
     assign page_fault_comb= (~translation_off & tlb_hit & (op_type_reg == 2) & ~dirty_out);
     assign PAGE_FAULT     = page_fault_reg_d1 | page_fault_comb_reg;

@@ -493,7 +493,7 @@ module PIPELINE #(
 //    string values; 
 //    string wb_datas; 
 //    string interr;
-//    reg [63:0] PC_VAL;
+////    reg [63:0] PC_VAL;
 ////    always@(*)
 //        emu_wb = wb_datas.atohex();
     always@(posedge CLK)
@@ -501,17 +501,17 @@ module PIPELINE #(
         if(RST) begin
             stip <=0;
         end
-//        if(~exstage.satp_update & ~(exstage.PAGE_FAULT_INS) & ~(exstage.PROC_IDLE) & stall_enable_fb_ex & |pc_fb_ex & ~fence_fb_ex & ~exstage.csr_file.interrupt) begin
-//               $fgets(values,read_file);
-//               $fgets(wb_datas,wb_file);
-//               $fgets(interr,tip_file);
-//               stip <= interr.atohex();
-//               if(((pc_fb_ex !== values.atohex())|(alu_out_wire !== wb_datas.atohex()))&!cbranch_fb_ex & |rd_fb_ex &(ins_fb_ex[31:20]!=32'hc01 | !exstage.csr_file.csr_op)) begin
-//                   $fatal("seqeunce fail expected PC : %h comming PC %h wb %h %h",values.atohex(),pc_fb_ex,wb_datas.atohex(),alu_out_wire,$time*1000);
-//               end
-//
-//        end
-////           
+///        if(~exstage.satp_update & ~(exstage.PAGE_FAULT_INS) & ~(exstage.PROC_IDLE) & stall_enable_fb_ex & |pc_fb_ex & ~fence_fb_ex & ~exstage.csr_file.interrupt) begin
+///               $fgets(values,read_file);
+///               $fgets(wb_datas,wb_file);
+///               $fgets(interr,tip_file);
+///               stip <= interr.atohex();
+///               if(((pc_fb_ex !== values.atohex())|(alu_out_wire !== wb_datas.atohex()))&!cbranch_fb_ex & |rd_fb_ex &(ins_fb_ex[31:20]!=32'hc01 | !exstage.csr_file.csr_op)) begin
+///                   $fatal("seqeunce fail expected PC : %h comming PC %h wb %h %h",values.atohex(),pc_fb_ex,wb_datas.atohex(),alu_out_wire,$time*1000);
+///               end
+///
+///        end
+///////           
         if(!( CACHE_READY && CACHE_READY_DATA && !flush_internal) & PAGE_FAULT_DAT & !COMB_PAGE_FAULT) begin
             page_load_fault_reg <=1;
         end
