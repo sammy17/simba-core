@@ -10,6 +10,6 @@ clean:
 hawk: hawk1	hawk2
 hawk1:
 	vcs -full64 -Xhwcosimtest=v2hx -Xzebu_opt=enable_hwtop_ports -Xhdl_cosim_dut Test_RISCV_PROCESSOR.uut\
-	+incdir+./src/design/common +incdir+./src/design/newcache  -f flist.f -o simv_hawk -Mdir=csrc_hawk -sverilog -debug_access+all
+	+incdir+./src/design/common +incdir+./src/design/newcache  -f flist.f -o ./simv_hawk -Mdir=csrc_hawk -sverilog -debug_access+all
 hawk2:
 	$(VCS_HOME)/bin/hcs -simv simv_hawk -fsdb

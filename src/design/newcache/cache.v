@@ -116,7 +116,7 @@ module Icache
         else if (cache_ready & ADDR_VALID) begin
             addr_d1  <= ADDR;
             addr_d2  <= ADDR ;
-            addr_d3  <= addr_d2 ;
+            addr_d3  <= ADDR ;
             addr_d4 <= addr_d3;
             addr_d1_vir  <= ADDR_vir;
             addr_d2_vir  <= ADDR_vir  ;
@@ -130,11 +130,11 @@ module Icache
             flush_d4 <= flush_d3;
 
             access_fault_d2 <= ACCESS_FAULT;
-            access_fault_d3 <= access_fault_d2;
+            access_fault_d3 <= ACCESS_FAULT;
             access_fault_d4 <= access_fault_d3;
 
             page_fault_d2 <= PAGE_FAULT;
-            page_fault_d3 <= page_fault_d2;
+            page_fault_d3 <= PAGE_FAULT;
             page_fault_d4 <= page_fault_d3;
         end
     
