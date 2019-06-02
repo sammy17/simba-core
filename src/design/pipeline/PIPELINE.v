@@ -483,16 +483,21 @@ module PIPELINE #(
     assign rs1_count = (flush_e|flush_e_i)?0:(rs1_type_fb==2'b10 ? 5:(rs1_type_fb==2'b00 ? 1:0))    ;
     assign rs2_count = (flush_e|flush_e_i)?0:(rs2_type_fb==2'b10 ? 5:(rs2_type_fb==2'b00 ?1:0))     ;
 
- 
-//    integer read_file;
-//    initial read_file=$fopen("pc_log.txt","r");
-//    integer wb_file;
-//    initial wb_file=$fopen("wb_log.txt","r");
-//    integer tip_file;
-//    initial tip_file =  $fopen("ints.txt","r");
-//    string values; 
-//    string wb_datas; 
-//    string interr;
+`ifdef SIM 
+    integer read_file;
+    initial read_file=$fopen("pc_log.txt","r");
+    integer wb_file;
+    initial wb_file=$fopen("wb_log.txt","r");
+    integer tip_file;
+    initial tip_file =  $fopen("ints.txt","r");
+    integer ins_file;
+    initial ins_file = $fopen("ins_log.txt","r");
+
+    string values; 
+    string wb_datas; 
+    string interr;
+    string ins_val;
+`endif
 ////    reg [63:0] PC_VAL;
 ////    always@(*)
 //        emu_wb = wb_datas.atohex();
@@ -501,16 +506,22 @@ module PIPELINE #(
         if(RST) begin
             stip <=0;
         end
-///        if(~exstage.satp_update & ~(exstage.PAGE_FAULT_INS) & ~(exstage.PROC_IDLE) & stall_enable_fb_ex & |pc_fb_ex & ~fence_fb_ex & ~exstage.csr_file.interrupt) begin
-///               $fgets(values,read_file);
-///               $fgets(wb_datas,wb_file);
-///               $fgets(interr,tip_file);
-///               stip <= interr.atohex();
-///               if(((pc_fb_ex !== values.atohex())|(alu_out_wire !== wb_datas.atohex()))&!cbranch_fb_ex & |rd_fb_ex &(ins_fb_ex[31:20]!=32'hc01 | !exstage.csr_file.csr_op)) begin
-///                   $fatal("seqeunce fail expected PC : %h comming PC %h wb %h %h",values.atohex(),pc_fb_ex,wb_datas.atohex(),alu_out_wire,$time*1000);
-///               end
-///
-///        end
+ `ifdef SIM
+        if(~exstage.satp_update & ~(exstage.PAGE_FAULT_INS) & ~(exstage.PROC_IDLE) & stall_enable_fb_ex & |pc_fb_ex & ~fence_fb_ex & ~exstage.csr_file.interrupt) begin
+               $fgets(values,read_file);
+               $fgets(wb_datas,wb_file);
+               $fgets(interr,tip_file);
+               $fgets(ins_val,ins_file);
+               stip <= interr.atohex();
+               if((pc_fb_ex !== values.atohex())|(ins_fb_ex!==ins_val.atohex())) begin
+                   $fatal("pc or ins mismatch pc %h %h, ins %h %h",values.atohex(),pc_fb_ex,ins_val.atohex(),ins_fb_ex);
+               end
+               if(((pc_fb_ex !== values.atohex())|(alu_out_wire !== wb_datas.atohex()))&!cbranch_fb_ex & |rd_fb_ex &(ins_fb_ex[31:20]!=32'hc01 | !exstage.csr_file.csr_op)) begin
+                   $fatal("seqeunce fail expected PC : %h comming PC %h wb %h %h",values.atohex(),pc_fb_ex,wb_datas.atohex(),alu_out_wire,$time*1000);
+               end
+
+        end
+ `endif
 ///////           
         if(!( CACHE_READY && CACHE_READY_DATA && !flush_internal) & PAGE_FAULT_DAT & !COMB_PAGE_FAULT) begin
             page_load_fault_reg <=1;
@@ -788,13 +799,16 @@ module PIPELINE #(
             rd_ex_mem1               <=    rd_ex_ex2                ;             
             pc_ex_mem1               <=    pc_fb_ex                 ;                                              
             imm_fb_ex                <=    imm_out_id_fb            ;    
-            //if (ins_fb_ex[31:20]!=32'hc01 | !exstage.csr_file.csr_op) begin
+     `ifdef SIM
+        if (ins_fb_ex[31:20]!=32'hc01 | !exstage.csr_file.csr_op) begin
+      `endif
                alu_ex_mem1              <=    alu_out_wire             ;
-
-           // end
-           // else begin
-           //      alu_ex_mem1           <= wb_datas.atohex()        ; 
-           // end
+      `ifdef SIM
+            end
+            else begin
+                 alu_ex_mem1           <= wb_datas.atohex()        ; 
+            end
+       `endif
             pc_ex_mem1               <=      pc_fb_ex               ;            
             op_type_ex_mem1          <=      op_type_ex_ex2         ;   
 

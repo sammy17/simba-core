@@ -76,14 +76,29 @@ module Icache
     wire  [line_width-1:0]  state_rdata         ;
     wire  [line_width-1:0]  state_raddr         ;
     reg                     state_wren          ;
+    reg                     state_wren_reg          ;
+
     wire                    state               ;
         wire                    cache_ready;
+        reg                    cache_ready_reg;
     wire       [data_width-1:0]            data ;
+    reg       [data_width-1:0]            data_reg ;
 
     `include "i_cache_inst.vh"
     always@(*)
     begin
-        CACHE_READY = cache_ready;
+        CACHE_READY = cache_ready_reg;
+    end
+    always@(posedge CLK) begin
+        if (RST) begin
+            cache_ready_reg <= 1'b1;
+            state_wren_reg  <= 1'b0;
+        end
+        else begin
+            cache_ready_reg <= cache_ready;
+            state_wren_reg  <= state_wren;
+            data_reg        <= data;
+        end
     end
     always @(posedge CLK) begin
         if (RST) begin
@@ -113,7 +128,7 @@ module Icache
 
             
         end
-        else if (cache_ready & ADDR_VALID) begin
+        else if (cache_ready_reg & ADDR_VALID) begin
             addr_d1  <= ADDR;
             addr_d2  <= ADDR ;
             addr_d3  <= ADDR ;
@@ -142,7 +157,7 @@ module Icache
     end
     always@(*)
     begin
-            DATA    = page_fault_d4?0: data ;
+            DATA    = page_fault_d4?0: data_reg ;
     end
 
     always@(posedge CLK)
@@ -153,7 +168,7 @@ module Icache
             addr_to_l2        <=0;
             flag              <=0;
         end
-        else if (~cache_ready & ~state_wren )   //check whether cache ready and make sure flag goes 0 one cycle before data get written
+        else if (~cache_ready_reg & ~state_wren & ~state_wren_reg)   //check whether cache ready and make sure flag goes 0 one cycle before data get written
         begin
             if(~addr_to_l2_valid & ~flag & (ADDR_VALID | ~flush_d4) & ~DCACHE_flusing) 
             begin
@@ -196,17 +211,17 @@ module Icache
     end
     generate
      if (offset_width>2)
-        assign data                 = cache_porta_data_out[{addr_d4[offset_width-1:2],2'b0}*8 +:32]       ;
+        assign data                 = cache_porta_data_out[{(cache_ready_reg&ADDR_VALID? addr_d3[offset_width-1:2]:addr_d4[offset_width-1:2]),2'b0}*8 +:32]       ;
     else begin
         assign data                 = cache_porta_data_out;
     end
     endgenerate
     
-    assign cache_porta_raddr    = addr_d4[offset_width+line_width-1:offset_width]              ;
+    assign cache_porta_raddr    = cache_ready_reg&ADDR_VALID? addr_d3[offset_width+line_width-1:offset_width]:  addr_d4[offset_width+line_width-1:offset_width] ;
     assign tag_porta_raddr      = cache_porta_raddr                                         ;
     assign state_raddr          = cache_porta_raddr                                         ;
-    assign tag_addr             = addr_d4[address_width-1:offset_width+line_width]             ;
-    assign cache_ready          =  ((tag_porta_data_out == tag_addr) & state )| page_fault_d4|access_fault_d4  |flush_d3|flush_d2|flush_d1               ;
+    assign tag_addr             = cache_ready_reg&ADDR_VALID? addr_d3[address_width-1:offset_width+line_width] :addr_d4[address_width-1:offset_width+line_width]           ;
+    assign cache_ready          =  ((tag_porta_data_out == tag_addr) & state )| page_fault_d3|access_fault_d3  |flush_d2|flush_d1               ;
     assign ADDR_TO_L2_VALID     = addr_to_l2_valid                                          ;
     assign ADDR_TO_L2           = addr_to_l2                                                ;
     assign ADDR_OUT             = addr_d4_vir                                                   ;

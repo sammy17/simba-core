@@ -40,7 +40,7 @@
     (
         .CLK(CLK)               ,
         .RST(RST)               ,
-        .FLUSH(flush_d3 & ADDR_VALID)        ,
+        .FLUSH(flush_d2 & ADDR_VALID)        ,
         .WREN(state_wren)       ,
         .WADDR (cache_porta_raddr)    ,
         .RADDR(state_raddr)     ,
