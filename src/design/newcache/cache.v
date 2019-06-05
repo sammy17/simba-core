@@ -152,6 +152,9 @@ module Icache
             page_fault_d3 <= PAGE_FAULT;
             page_fault_d4 <= page_fault_d3;
         end
+        else if(flush_d2) begin
+            flush_d2 <= 1'b0;
+        end
     
     
     end
@@ -221,7 +224,7 @@ module Icache
     assign tag_porta_raddr      = cache_porta_raddr                                         ;
     assign state_raddr          = cache_porta_raddr                                         ;
     assign tag_addr             = cache_ready_reg&ADDR_VALID? addr_d3[address_width-1:offset_width+line_width] :addr_d4[address_width-1:offset_width+line_width]           ;
-    assign cache_ready          =  ((tag_porta_data_out == tag_addr) & state )| page_fault_d3|access_fault_d3  |flush_d2|flush_d1               ;
+    assign cache_ready          =  ((tag_porta_data_out == tag_addr) & state )| ((cache_ready_reg&ADDR_VALID)? page_fault_d3 : page_fault_d4) | ((cache_ready_reg&ADDR_VALID)?access_fault_d3:access_fault_d4)                 ;
     assign ADDR_TO_L2_VALID     = addr_to_l2_valid                                          ;
     assign ADDR_TO_L2           = addr_to_l2                                                ;
     assign ADDR_OUT             = addr_d4_vir                                                   ;
@@ -230,6 +233,3 @@ module Icache
     assign PAGE_FAULT_OUT       = page_fault_d4;
 
 endmodule
-
-
-

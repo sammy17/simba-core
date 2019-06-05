@@ -514,10 +514,10 @@ module PIPELINE #(
                $fgets(ins_val,ins_file);
                stip <= interr.atohex();
                if((pc_fb_ex !== values.atohex())|(ins_fb_ex!==ins_val.atohex())) begin
-                   $fatal("pc or ins mismatch pc %h %h, ins %h %h",values.atohex(),pc_fb_ex,ins_val.atohex(),ins_fb_ex);
+                   $display("pc or ins mismatch pc %h %h, ins %h %h",values.atohex(),pc_fb_ex,ins_val.atohex(),ins_fb_ex);
                end
                if(((pc_fb_ex !== values.atohex())|(alu_out_wire !== wb_datas.atohex()))&!cbranch_fb_ex & |rd_fb_ex &(ins_fb_ex[31:20]!=32'hc01 | !exstage.csr_file.csr_op)) begin
-                   $fatal("seqeunce fail expected PC : %h comming PC %h wb %h %h",values.atohex(),pc_fb_ex,wb_datas.atohex(),alu_out_wire,$time*1000);
+                   $display("seqeunce fail expected PC : %h comming PC %h wb %h %h",values.atohex(),pc_fb_ex,wb_datas.atohex(),alu_out_wire,$time*1000);
                end
 
         end

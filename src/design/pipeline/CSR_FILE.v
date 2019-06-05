@@ -497,7 +497,7 @@ module CSR_FILE (
             TSR            <= 0     ;                                                                                             
             TVM            <= 0     ;                                                                                             
             TW             <= 0     ;                                                                                             
-             fs <=1'b1;   
+             fs <=2'b1;   
              uxl<=2'b10;
              sxl<=2'b0;                                                                                                                                                                                                    
             {mxr,sum,mprv,mpp,spp,mpie,spie,upie,m_ie,s_ie,u_ie}           <= 32'b110        ;                        
@@ -561,8 +561,8 @@ module CSR_FILE (
             if(minsret_reg%100000==0) begin
                 $display(minsret_reg, " %h %h",PC,INS_FB_EX);
             end
-            if(minsret_reg == 32'd15_000_000) begin
-                //$fsdbDumpvars;
+            if(minsret_reg == 32'd105_000_000) begin
+                $fsdbDumpvars;
             end
              
             if(interrupt|exception) begin
