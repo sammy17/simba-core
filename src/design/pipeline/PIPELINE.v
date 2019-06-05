@@ -514,10 +514,10 @@ module PIPELINE #(
                $fgets(ins_val,ins_file);
                stip <= interr.atohex();
                if((pc_fb_ex !== values.atohex())|(ins_fb_ex!==ins_val.atohex())) begin
-                   $display("pc or ins mismatch pc %h %h, ins %h %h",values.atohex(),pc_fb_ex,ins_val.atohex(),ins_fb_ex);
+                   $fatal("pc or ins mismatch pc %h %h, ins %h %h",values.atohex(),pc_fb_ex,ins_val.atohex(),ins_fb_ex);
                end
                if(((pc_fb_ex !== values.atohex())|(alu_out_wire !== wb_datas.atohex()))&!cbranch_fb_ex & |rd_fb_ex &(ins_fb_ex[31:20]!=32'hc01 | !exstage.csr_file.csr_op)) begin
-                   $display("seqeunce fail expected PC : %h comming PC %h wb %h %h",values.atohex(),pc_fb_ex,wb_datas.atohex(),alu_out_wire,$time*1000);
+                   $fatal("seqeunce fail expected PC : %h comming PC %h wb %h %h",values.atohex(),pc_fb_ex,wb_datas.atohex(),alu_out_wire,$time*1000);
                end
 
         end
@@ -888,7 +888,7 @@ module PIPELINE #(
     assign BRANCH               = (jump_fb_ex |cbranch_fb_ex  |jumpr_fb_ex | fence_fb_ex) &  ! flush_internal ;  
     assign FLUSH                = flush_internal                                    ;
     assign BRANCH_TAKEN         = branch_taken                                      ;
-    assign PIPELINE_STALL       = (stall_enable_id_fb  ||  branch_taken ||flush_e || flush_e_i || ~CACHE_READY) & CACHE_READY_DATA  ;
+    assign PIPELINE_STALL       = (stall_enable_id_fb   ||flush_e || flush_e_i || ~CACHE_READY) & CACHE_READY_DATA  ;
     assign c1_mux_final         = rs1_final                                         ; 
     assign c2_mux_final         = rs2_final                                         ;
     assign jmux1_final          = imm_out_id_fb                                     ;
