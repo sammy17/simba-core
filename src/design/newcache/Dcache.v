@@ -841,12 +841,14 @@ module Dcache
 			no_dep <= 0;
         end
         else begin
-            dirty_wren_d1 <= dirty_wren;
-            cache_porta_data_in_d1 <= cache_porta_data_in;
-            addr_d5 <= addr_d4;
-			dep1 <= dep1_wire;
-			dep2 <=   dep2_wire;
-			no_dep <= no_dep_wire;
+            if(~state_wren) begin
+                dirty_wren_d1 <= dirty_wren;
+                cache_porta_data_in_d1 <= cache_porta_data_in;
+                addr_d5 <= addr_d4;
+		    	dep1 <= dep1_wire;
+		    	dep2 <=   dep2_wire;
+		    	no_dep <= no_dep_wire;
+            end
         end
     end
 	wire [offset_width+line_width-1:offset_width] read_addr_mux_out = cache_ready?addr_d2[offset_width+line_width-1:offset_width]: addr_d3[offset_width+line_width-1:offset_width];

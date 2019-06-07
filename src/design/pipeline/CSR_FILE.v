@@ -561,7 +561,7 @@ module CSR_FILE (
             if(minsret_reg%100000==0) begin
                 $display(minsret_reg, " %h %h",PC,INS_FB_EX);
             end
-            if(minsret_reg == 32'd105_000_000) begin
+            if(minsret_reg == 32'd14_000_000) begin
                 $fsdbDumpvars;
             end
              
