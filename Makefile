@@ -1,6 +1,6 @@
 all: clean vcs
 vcs:
-	vcs -full64 -top glbl -top Test_RISCV_PROCESSOR -f flist.f -sverilog +incdir+./src/design/common +incdir+./src/design/newcache  -fgp -debug_access+all -kdb -lca -l vcs.log +define+SIM; ./simv -fgp:numcores=10 -l run.log 
+	vcs -full64 -top glbl -top Test_RISCV_PROCESSOR -f flist.f -sverilog +incdir+./src/design/common +incdir+./src/design/newcache  -fgp -debug_access+all -kdb -lca -l vcs.log +define+SIM +vcs+fsdbon -j4; ./simv -fgp=num_cores:8 -fgp=num_fsdb_threads:1 -fgp=sync:busywait -l run.log 
 vcs_xprop:
 	vcs -full64 -top glbl -top Test_RISCV_PROCESSOR -f flist.f -sverilog +incdir+./src/design/common +incdir+./src/design/newcache -fgp -debug_access+all +vcs+fsdbon+mda -kdb -lca -l vcs.log -xprop=xprop.config; ./simv -fgp:numcores=10 -l run.log 
 vcs1:

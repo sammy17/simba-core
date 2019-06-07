@@ -49,6 +49,8 @@ module Dcache
 
     );
     `include "PipelineParams.vh"
+   reg stall_clear_amo;
+   wire stall_for_amo ; 
 	wire cache_hit;
 	reg cache_hit_reg;
     reg  [address_width-1:0] addr_d0             ;
@@ -237,18 +239,21 @@ module Dcache
 			state <= 0;
 			full_state <= 0;
 		end begin
-			dirty <= dirty_wire;
-			state <= state_wire;
-			tag_porta_data_out <= tag_porta_data_out_wire;
-			cache_porta_data_out_i <= cache_porta_data_out_i_wire;
-			full_state <= full_state_wire;
-            cache_porta_raddr_d1 <= cache_porta_raddr;
+
+            if(~stall_for_amo) begin
+		    	dirty <= dirty_wire;
+		    	state <= state_wire;
+		    	tag_porta_data_out <= tag_porta_data_out_wire;
+		    	cache_porta_data_out_i <= cache_porta_data_out_i_wire;
+		    	full_state <= full_state_wire;
+                cache_porta_raddr_d1 <= cache_porta_raddr;
+            end
 		end
 	end
      
     always@(*)
     begin
-        CACHE_READY = cache_ready;
+        CACHE_READY = cache_ready & ~stall_for_amo;
     end
     always@(posedge CLK) begin
         if(RST) begin
@@ -317,7 +322,7 @@ module Dcache
 			peri_access_d2 <=0;
 			peri_access_d3 <=0;
         end
-		else if (cache_ready & ADDR_VALID) begin
+		else if (cache_ready & ADDR_VALID & ~stall_for_amo) begin
             addr_d0  <= ADDR;
             addr_d1  <= ADDR;
             addr_d2  <= addr_d1 ;
@@ -472,7 +477,7 @@ module Dcache
             cache_porta_data_in     <= 0        ;
             flush_addr              <= -1       ;
         end
-        else if (cache_ready & control_d3 == 2'b10 &ADDR_VALID & ~peri_access_d3 & !access_fault_d4 & !page_fault_d4)
+        else if (cache_ready & control_d3 == 2'b10 &ADDR_VALID & ~peri_access_d3 & !access_fault_d4 & !page_fault_d4 & ~stall_for_amo)
         begin
             cache_porta_wren     <= 1;
             cache_porta_data_in  <=  cache_porta_data_in_int;
@@ -553,23 +558,57 @@ module Dcache
 
 
 
-    reg [data_width-1:0] data_to_be_writen;
-    integer i;
-    wire [31:0] add_up= data_d3[63:32] + data[63:32];
-    wire [31:0] add_dwn= data_d3[31:0] + data[31:0];
-    wire [31:0] max_up = $signed(data_d3[63:32]) > $signed(data[63:32]) ? data_d3[63:32] : data[63:32];
-    wire [31:0] max_dwn = $signed(data_d3[31:0]) > $signed(data[31:0]) ? data_d3[31:0] : data[31:0];   
+   reg [data_width-1:0] data_to_be_writen;
+   integer i;
+   reg [31:0] add_up;
+   reg [31:0] add_dwn;
+   reg [31:0] max_up ;
+   reg [31:0] max_dwn ;   
+   reg [31:0] min_up;
+   reg [31:0] min_dwn;
+   reg [31:0] maxu_up;
+   reg [31:0] maxu_dwn;
+   reg [31:0] minu_up;
+   reg [31:0] minu_dwn;
+   reg [63:0] addd;
+   reg [63:0] maxd;
+   reg [63:0] mind;
+   reg [63:0] minud;
+   reg [63:0] maxud;
 
-    wire [31:0] min_up = $signed(data_d3[63:32]) > $signed(data[63:32]) ? data[63:32] : data_d3[63:32];
-    wire [31:0] min_dwn = $signed(data_d3[31:0]) > $signed(data[31:0]) ? data[31:0] : data_d3[31:0];
-    
-    wire [31:0] maxu_up = (data_d3[63:32]) > (data[63:32]) ? data_d3[63:32] : data[63:32];
-    wire [31:0] maxu_dwn = (data_d3[31:0]) > (data[31:0]) ? data_d3[31:0] : data[31:0];
+   always@(posedge CLK) begin
+       add_up <= data_d3[63:32] + data[63:32];
+       add_dwn <= data_d3[31:0] + data[31:0] ;
+       max_up <= $signed(data_d3[63:32]) > $signed(data[63:32]) ? data_d3[63:32] : data[63:32];
+       max_dwn <= $signed(data_d3[31:0]) > $signed(data[31:0]) ? data_d3[31:0] : data[31:0];   
+       min_up <= $signed(data_d3[63:32]) > $signed(data[63:32]) ? data[63:32] : data_d3[63:32];
+       min_dwn <= $signed(data_d3[31:0]) > $signed(data[31:0]) ? data[31:0] : data_d3[31:0];
+       maxu_up <= (data_d3[63:32]) > (data[63:32]) ? data_d3[63:32] : data[63:32];
+       maxu_dwn <= (data_d3[31:0]) > (data[31:0]) ? data_d3[31:0] : data[31:0];
+       minu_up <= (data_d3[63:32]) > (data[63:32]) ? data[63:32] : data_d3[63:32];
+       addd     <= data_d3 + data;
+       maxd <= $signed(data_d3) > $signed(data) ? data_d3 : data;
+       mind <= $signed(data)    > $signed(data_d3) ? data_d3 : data;
+       minud <= (data_d3) > (data) ? data : data_d3;
+       maxud <= (data_d3) > (data) ? data : data_d3;
+   end
+   assign stall_for_amo = (amo_d3==amoadd| amo_d3==amomax| amo_d3==amomin| amo_d3==amominu | amo_d3==amomaxu)& ~stall_clear_amo  & control_d3==2'b10 & cache_ready; 
+   always@(posedge CLK) begin
+       if(RST) begin
+           stall_clear_amo <= 1'b0;
+       end
+       else begin
+           if(cache_ready & stall_for_amo) begin
+               stall_clear_amo <= 1'b1;
+           end
+           else begin
+               stall_clear_amo <= 1'b0;
+           end
+       end
+   end
+   
 
-    wire [31:0] minu_up = (data_d3[63:32]) > (data[63:32]) ? data[63:32] : data_d3[63:32];
-    wire [31:0] minu_dwn = (data_d3[31:0]) > (data[31:0]) ? data[31:0] : data_d3[31:0];
-    
-   always@(*)  
+  always@(*)  
    begin
       write_reserve=0;
       clear_reserve=0;
@@ -671,7 +710,7 @@ module Dcache
                     end
                 end
                 else begin
-                    data_to_be_writen= data_d3 + data ;
+                    data_to_be_writen= addd ;
                 end
             end
             amoand:
@@ -699,7 +738,7 @@ module Dcache
                     end
                 end
                 else begin
-                    data_to_be_writen= $signed(data_d3) > $signed(data) ? data : data_d3 ;
+                    data_to_be_writen= mind;
                 end
             end
             amomax:
@@ -713,7 +752,7 @@ module Dcache
                     end
                 end
                 else begin
-                    data_to_be_writen= $signed(data_d3) > $signed(data) ? data_d3 : data ;
+                    data_to_be_writen= maxd;
                 end
             end
             
@@ -728,7 +767,7 @@ module Dcache
                     end
                 end
                 else begin
-                    data_to_be_writen= (data_d3) > (data) ? data_d3 : data ;
+                    data_to_be_writen= maxud;
                 
                 end
             end
@@ -743,8 +782,7 @@ module Dcache
                     end
                 end
                 else begin
-                    data_to_be_writen= (data_d3) > (data) ? data : data_d3 ;
-                    
+                    data_to_be_writen= minud ;
                 end
             end
             default:
@@ -782,7 +820,9 @@ module Dcache
 			cache_hit_reg <= 1;
 		end
 		else begin
-			cache_hit_reg <= cache_hit;
+            if(~stall_for_amo) begin
+			    cache_hit_reg <= cache_hit;
+            end
 		end
 	end
 	reg dep1;
