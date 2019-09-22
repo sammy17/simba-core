@@ -841,7 +841,7 @@ module Dcache
 			no_dep <= 0;
         end
         else begin
-            if(~state_wren) begin
+            if(~stall_for_amo) begin
                 dirty_wren_d1 <= dirty_wren;
                 cache_porta_data_in_d1 <= cache_porta_data_in;
                 addr_d5 <= addr_d4;
