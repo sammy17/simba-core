@@ -138,5 +138,5 @@ add_files -norecurse ./soc/riscv_soc.srcs/sources_1/bd/risv_soc/hdl/risv_soc_wra
 launch_runs impl_1 -to_step write_bitstream -jobs 6
 wait_on_run impl_1
 file mkdir ./soc/riscv_soc.sdk
-file copy -force ./soc/riscv_soc.runs/impl_1/risv_soc_wrapper.sysdef ./riscv_soc.sdk/risv_soc_wrapper.hdf
+file copy -force ./soc/riscv_soc.runs/impl_1/risv_soc_wrapper.sysdef ./soc/riscv_soc.sdk/risv_soc_wrapper.hdf
 launch_sdk -workspace ./soc/riscv_soc.sdk -hwspec ./soc/riscv_soc.sdk/risv_soc_wrapper.hdf
