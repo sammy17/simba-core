@@ -228,7 +228,7 @@
 	  else begin
 	    if (slv_reg_wren)
 	      begin
-	        if (axi_awaddr==32'he0001030) begin
+	        if (axi_awaddr==32'he0000030) begin
 	           $write("%c",S_AXI_WDATA);
 	        end
 	        case ( axi_awaddr[ADDR_LSB+OPT_MEM_ADDR_BITS:ADDR_LSB] )
