@@ -304,7 +304,9 @@ module CSR_FILE (
         if(RST) begin
             satp_update <=0;
         end
-        else if(!PROC_IDLE & csr_op & (CSR_ADDRESS==satp)) begin
+        else if(!PROC_IDLE & csr_op & (CSR_ADDRESS==satp) & ((input_data_final[63:60]==8|input_data_final[63:60]==0)&
+             (input_data_final[63:60]!=smode_reg)|input_data_final[43:0]!=ppn )) 
+        begin
             satp_update <= 1;
         end
         else if (!(PROC_IDLE)) begin
