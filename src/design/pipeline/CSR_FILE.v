@@ -122,7 +122,7 @@ module CSR_FILE (
     reg     [63     :0]     stval_reg                          ;
     reg     [62     :0]     secode_reg                         ;
     reg                     sinterrupt                         ;
-    reg     [3:0]             smode_reg                          ;
+    (* mark_debug = "true" *) reg     [3:0]             smode_reg                          ;
     reg     [15      :0]     asid                               ;
     reg     [43     :0]     ppn                                ;
     
@@ -141,7 +141,7 @@ module CSR_FILE (
     reg [1:0] sxl,uxl,xs,fs;
     wire sd=(fs==2'b11);
     // machine mode wires
-    wire    [63 : 0] mip_r       = {52'b0,MEIP,1'b0,seip,ueip,MTIP,1'b0,STIP,utip,MSIP,1'b0,ssip,usip}                          ;  //hardwired 0 for hypervisor specs
+    wire    [63 : 0] mip_r       = {52'b0,1'b0/*meip*/,1'b0,MEIP,ueip,MTIP,1'b0,STIP,utip,MSIP,1'b0,ssip,usip}                          ;  //hardwired 0 for hypervisor specs
     wire    [63 : 0] mie_r       = {52'b0,meie,1'b0,seie,ueie,mtie,1'b0,stie,utie,msie,1'b0,ssie,usie}                          ;  
     wire    [63 : 0] mstatus_r   = {sd,27'b0,sxl,uxl,9'b0,TSR,TW,TVM,mxr,sum,mprv,2'b0,fs,mpp,2'b0,spp,mpie,1'b0,spie,upie,m_ie,1'b0,s_ie,u_ie}  ;
     wire    [63 : 0] mtvec_r     = {mt_base,mt_mode}                                                                            ;
@@ -304,7 +304,9 @@ module CSR_FILE (
         if(RST) begin
             satp_update <=0;
         end
-        else if(!PROC_IDLE & csr_op & (CSR_ADDRESS==satp)) begin
+        else if(!PROC_IDLE & csr_op & (CSR_ADDRESS==satp) & ((input_data_final[63:60]==8|input_data_final[63:60]==0)&
+             (input_data_final[63:60]!=smode_reg)|input_data_final[43:0]!=ppn )) 
+        begin
             satp_update <= 1;
         end
         else if (!(PROC_IDLE)) begin
@@ -698,7 +700,11 @@ module CSR_FILE (
                                                                 input_data_final[1:0]
                                                                 }                           ;
                     satp           :    begin
-                                             {   smode_reg,asid,ppn}          <=  input_data_final            ;
+                                             //only sv 39 is supported 
+                                             if((input_data_final[63:60]==8) | (input_data_final[63:60]==0)) begin
+                                                    smode_reg          <=  input_data_final[63:60]            ;
+                                             end
+                                            ppn <= input_data_final[43:0];
 
                                              
                                         end

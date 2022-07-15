@@ -90,7 +90,7 @@ always@(posedge M_AXI_ACLK) begin
 						else begin
 							master_state <= (write_word_low + ADDR_TO_PERI[2]);
 							M_AXI_AWVALID <=1;
-							M_AXI_AWADDR <=  ADDR_TO_PERI;
+							M_AXI_AWADDR <=  (ADDR_TO_PERI != `CLINT_ADDR) ? ADDR_TO_PERI: 32'h2800_0000; 
 							M_AXI_WVALID <= 1;
 							M_AXI_WDATA <= ADDR_TO_PERI[2]?  DATA_TO_PERI[63: 32] : DATA_TO_PERI[31: 0] ;
 							M_AXI_WSTRB <=  ADDR_TO_PERI[2]? WSTRB[7:4] : WSTRB[3:0] ;
@@ -153,7 +153,7 @@ always@(posedge M_AXI_ACLK) begin
 					else begin
 						master_state <= write_word_high;
 						M_AXI_AWVALID <=1;
-						M_AXI_AWADDR <=   ADDR_TO_PERI;
+						M_AXI_AWADDR <=   (ADDR_TO_PERI != `CLINT_ADDR) ? ADDR_TO_PERI: 32'h2800_0000; 
 						M_AXI_WVALID <= 1;
 						M_AXI_WDATA <= DATA_TO_PERI[63: 32];
 						M_AXI_WSTRB <=  WSTRB[7:4];
