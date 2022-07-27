@@ -141,7 +141,7 @@ module CSR_FILE (
     reg [1:0] sxl,uxl,xs,fs;
     wire sd=(fs==2'b11);
     // machine mode wires
-    wire    [63 : 0] mip_r       = {52'b0,1'b0/*meip*/,1'b0,MEIP,ueip,MTIP,1'b0,STIP,utip,MSIP,1'b0,ssip,usip}                          ;  //hardwired 0 for hypervisor specs
+    wire    [63 : 0] mip_r       = {52'b0,MEIP,1'b0,SEIP,ueip,MTIP,1'b0,STIP,utip,MSIP,1'b0,ssip,usip}                          ;  //hardwired 0 for hypervisor specs
     wire    [63 : 0] mie_r       = {52'b0,meie,1'b0,seie,ueie,mtie,1'b0,stie,utie,msie,1'b0,ssie,usie}                          ;  
     wire    [63 : 0] mstatus_r   = {sd,27'b0,sxl,uxl,9'b0,TSR,TW,TVM,mxr,sum,mprv,2'b0,fs,mpp,2'b0,spp,mpie,1'b0,spie,upie,m_ie,1'b0,s_ie,u_ie}  ;
     wire    [63 : 0] mtvec_r     = {mt_base,mt_mode}                                                                            ;
@@ -176,7 +176,7 @@ module CSR_FILE (
     // supervisor mode wires
     wire    [63 : 0] sstatus_r   =  {sd,29'b0,uxl,12'b0,mxr,sum,1'b0,2'b0,fs,2'b0,2'b0,spp,1'b0,1'b0,spie,upie,1'b0,1'b0,s_ie,u_ie}  ;    
     wire    [63 : 0] stvec_r     = {st_base,st_mode}                                            ;
-    wire    [63 : 0] sip_r       = {52'b0,2'b0,1'b0,seip,ueip,1'b0,1'b0,STIP,utip,1'b0,1'b0,ssip,usip}               ;  //hardwired 0 for hypervisor specs
+    wire    [63 : 0] sip_r       = {52'b0,2'b0,1'b0,SEIP,ueip,1'b0,1'b0,STIP,utip,1'b0,1'b0,ssip,usip}               ;  //hardwired 0 for hypervisor specs
     wire    [63 : 0] sie_r       = {52'b0,1'b0,1'b0,seie,ueie,1'b0,1'b0,stie,utie,1'b0,1'b0,ssie,usie}               ;  
     wire    [63 : 0] sedeleg_r   = sedeleg_reg                                                  ;
     wire    [63 : 0] sideleg_r   = sideleg_reg                                                  ;
@@ -412,7 +412,7 @@ module CSR_FILE (
        wire software_inter = (ssie & SSIP);
        wire timer_inter =   (stie & STIP);
        wire extern_inter =  (seie & SEIP);
-       wire [5:0] timer_inter_ecode = timer_inter  ? 5:0 ;
+       wire [5:0] timer_inter_ecode = ~extern_inter&timer_inter  ? 5:0 ;
        wire [5:0] extern_inter_ecode = extern_inter ? 9:0 ;
        wire [5:0] soft_inter_ecode = software_inter ? 1 :0 ;
        wire final_inter = (timer_inter | extern_inter | software_inter)&s_ie;
