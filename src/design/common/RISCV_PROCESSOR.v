@@ -175,10 +175,24 @@ module RISCV_PROCESSOR#(
         input  wire                                             peripheral_interface_aresetn,
         output wire [C_Peripheral_Interface_ADDR_WIDTH-1 : 0]   peripheral_interface_awaddr,
         output wire [2 : 0]                                     peripheral_interface_awprot,
+        //
+        output wire [2 : 0]                                     peripheral_interface_awsize,
+        output wire                                             peripheral_interface_wlast,
+        //
+        output reg [7 : 0]                                     peripheral_interface_awlen=0,
+        output reg [1 : 0]                                     peripheral_interface_awburst=1,
+        output reg [0 : 0]                                     peripheral_interface_awlock=0,
+        output reg [3 : 0]                                     peripheral_interface_awcache=2,
+        output reg [3 : 0]                                     peripheral_interface_awqos=0,
+        output reg [0 : 0]                                     peripheral_interface_awuser=1,
+        output reg [0 : 0]                                     peripheral_interface_awid=1,
         output wire                                             peripheral_interface_awvalid,
         input  wire                                             peripheral_interface_awready,
+        input  wire                                             peripheral_interface_rid,
+        input  wire                                             peripheral_interface_bid,
         output wire [C_Peripheral_Interface_DATA_WIDTH-1 : 0]   peripheral_interface_wdata,
         output wire [C_Peripheral_Interface_DATA_WIDTH/8-1 : 0] peripheral_interface_wstrb,
+        output reg [0 : 0]                                     peripheral_interface_wuser=1,
         output wire                                             peripheral_interface_wvalid,
         input  wire                                             peripheral_interface_wready,
         input  wire [1 : 0]                                     peripheral_interface_bresp,
@@ -191,7 +205,18 @@ module RISCV_PROCESSOR#(
         input  wire [C_Peripheral_Interface_DATA_WIDTH-1 : 0]   peripheral_interface_rdata,
         input  wire [1 : 0]                                     peripheral_interface_rresp,
         input  wire                                             peripheral_interface_rvalid,
+        output reg [0 : 0]                                     peripheral_interface_arid=1,
         output wire                                             peripheral_interface_rready ,
+        output reg [1 : 0]                                     peripheral_interface_arburst=1,
+        output reg [0 : 0]                                     peripheral_interface_arlock=0,
+        output reg [3 : 0]                                     peripheral_interface_arcache=2,
+        output reg [3 : 0]                                     peripheral_interface_arqos=0,
+        output reg [0 : 0]                                     peripheral_interface_aruser=1,
+        output reg [7 : 0]                                     peripheral_interface_arlen=0,
+        //
+        output reg [2 : 0]                                     peripheral_interface_arsize=2,
+        input wire                                             peripheral_interface_rlast,
+        //
         output reg [7:0] char,
         output reg char_write
 
@@ -877,6 +902,8 @@ ITLB
        .M_AXI_RRESP                     (peripheral_interface_rresp),
        .M_AXI_RVALID                    (peripheral_interface_rvalid),
        .M_AXI_RREADY                    (peripheral_interface_rready),
+       .M_AXI_AWSIZE                    (peripheral_interface_awsize),
+       .M_AXI_WLAST                     (peripheral_interface_wlast),
 	   .WSTRB(WSTRB_TO_PERI ),
        .INTERUPT(timer_interrupt_pending)		
 	);
