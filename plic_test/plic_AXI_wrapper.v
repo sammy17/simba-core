@@ -126,7 +126,7 @@ always@(posedge S_AXI_ACLK) begin
                     current_state<= w;
                 end
                 if(S_AXI_ARVALID) begin
-                   S_AXI_ARREADY <=0;
+                   S_AXI_ARREADY <=1;
                     current_state <= r;
                     auto_in_a_bits_address <= S_AXI_ARADDR;
                     auto_in_a_valid <= 1;
