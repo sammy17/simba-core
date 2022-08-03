@@ -373,7 +373,7 @@
 		end                                                              
 		else if (~axi_awvalid  & initiate_write)                             
 		begin                                                            
-			axi_awaddr <= addr_w-32'h5000_0000;                   
+			axi_awaddr <= addr_w;                   
 		end                                                              
 		else                                                               
 			axi_awaddr <= axi_awaddr;                                        
@@ -537,7 +537,7 @@
 		end                                                            
 		else if (~axi_arvalid && initiate_read)                           
 		begin                                                          
-			axi_araddr <= raddr-32'h5000_0000;;                 
+			axi_araddr <= raddr;                 
 		end                                                            
 		else                                                             
 			axi_araddr <= axi_araddr;                                      
