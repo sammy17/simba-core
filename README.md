@@ -9,7 +9,7 @@ In contrast to most ISAs, the RISC-V ISA can be freely used for any purpose, per
 The project began in 2010 at the University of California, Berkeley, but many contributors are volunteers and industry workers outside the university.
 
 The RISC-V ISA has been designed with small, fast, and low-power real-world implementations in mind,but without over-architecting for a particular microarchitecture style.(https://en.wikipedia.org/wiki/RISC-V).
-<br />
+<br/>
 
 
 ## Features of the implementation
