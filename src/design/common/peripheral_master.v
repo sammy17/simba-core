@@ -86,6 +86,8 @@ always@(posedge M_AXI_ACLK) begin
 		M_AXI_WSTRB <=0; 
 		M_AXI_WDATA <=0;
 		M_AXI_RREADY <=0;
+        M_AXI_AWSIZE <=0;
+        M_AXI_WLAST <=0;
 		master_state <=idle;
         INTERUPT <= 0;
 	end

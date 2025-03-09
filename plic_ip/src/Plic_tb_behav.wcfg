@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wave_config>
+   <wave_state>
+   </wave_state>
+   <db_ref_list>
+      <db_ref path="Plic_tb_behav.wdb" id="1">
+         <top_modules>
+            <top_module name="Plic_tb" />
+            <top_module name="glbl" />
+         </top_modules>
+      </db_ref>
+   </db_ref_list>
+   <zoom_setting>
+      <ZoomStartTime time="0fs"></ZoomStartTime>
+      <ZoomEndTime time="31000000001fs"></ZoomEndTime>
+      <Cursor1Time time="31000000000fs"></Cursor1Time>
+   </zoom_setting>
+   <column_width_setting>
+      <NameColumnWidth column_width="261"></NameColumnWidth>
+      <ValueColumnWidth column_width="108"></ValueColumnWidth>
+   </column_width_setting>
+   <WVObjectSize size="19" />
+   <wvobject type="array" fp_name="/Plic_tb/wrapper_inst/plic_inst/fanin_io_dev">
+      <obj_property name="ElementShortName">fanin_io_dev[5:0]</obj_property>
+      <obj_property name="ObjectShortName">fanin_io_dev[5:0]</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/Plic_tb/S_AXI_ARESETN">
+      <obj_property name="ElementShortName">S_AXI_ARESETN</obj_property>
+      <obj_property name="ObjectShortName">S_AXI_ARESETN</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/Plic_tb/wrapper_inst/S_AXI_AWVALID">
+      <obj_property name="ElementShortName">S_AXI_AWVALID</obj_property>
+      <obj_property name="ObjectShortName">S_AXI_AWVALID</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/Plic_tb/wrapper_inst/S_AXI_AWREADY">
+      <obj_property name="ElementShortName">S_AXI_AWREADY</obj_property>
+      <obj_property name="ObjectShortName">S_AXI_AWREADY</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/Plic_tb/wrapper_inst/S_AXI_WSTRB">
+      <obj_property name="ElementShortName">S_AXI_WSTRB[7:0]</obj_property>
+      <obj_property name="ObjectShortName">S_AXI_WSTRB[7:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/Plic_tb/S_AXI_WDATA">
+      <obj_property name="ElementShortName">S_AXI_WDATA[63:0]</obj_property>
+      <obj_property name="ObjectShortName">S_AXI_WDATA[63:0]</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/Plic_tb/S_AXI_WREADY">
+      <obj_property name="ElementShortName">S_AXI_WREADY</obj_property>
+      <obj_property name="ObjectShortName">S_AXI_WREADY</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/Plic_tb/S_AXI_BVALID">
+      <obj_property name="ElementShortName">S_AXI_BVALID</obj_property>
+      <obj_property name="ObjectShortName">S_AXI_BVALID</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/Plic_tb/S_AXI_BREADY">
+      <obj_property name="ElementShortName">S_AXI_BREADY</obj_property>
+      <obj_property name="ObjectShortName">S_AXI_BREADY</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/Plic_tb/wrapper_inst/plic_inst/priority_0">
+      <obj_property name="ElementShortName">priority_0[2:0]</obj_property>
+      <obj_property name="ObjectShortName">priority_0[2:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/Plic_tb/wrapper_inst/current_state">
+      <obj_property name="ElementShortName">current_state[2:0]</obj_property>
+      <obj_property name="ObjectShortName">current_state[2:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="divider307" type="divider">
+   </wvobject>
+   <wvobject type="logic" fp_name="/Plic_tb/wrapper_inst/plic_inst/gateways_gateway_14/inFlight">
+      <obj_property name="ElementShortName">inFlight</obj_property>
+      <obj_property name="ObjectShortName">inFlight</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/Plic_tb/wrapper_inst/auto_int_out_0_0">
+      <obj_property name="ElementShortName">auto_int_out_0_0</obj_property>
+      <obj_property name="ObjectShortName">auto_int_out_0_0</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/Plic_tb/wrapper_inst/auto_int_out_1_0">
+      <obj_property name="ElementShortName">auto_int_out_1_0</obj_property>
+      <obj_property name="ObjectShortName">auto_int_out_1_0</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/Plic_tb/wrapper_inst/plic_inst/auto_int_in_14">
+      <obj_property name="ElementShortName">auto_int_in_14</obj_property>
+      <obj_property name="ObjectShortName">auto_int_in_14</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/Plic_tb/wrapper_inst/plic_inst/maxDevs_0">
+      <obj_property name="ElementShortName">maxDevs_0[5:0]</obj_property>
+      <obj_property name="ObjectShortName">maxDevs_0[5:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/Plic_tb/S_AXI_RDATA">
+      <obj_property name="ElementShortName">S_AXI_RDATA[63:0]</obj_property>
+      <obj_property name="ObjectShortName">S_AXI_RDATA[63:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/Plic_tb/wrapper_inst/plic_inst/completerDev">
+      <obj_property name="ElementShortName">completerDev[5:0]</obj_property>
+      <obj_property name="ObjectShortName">completerDev[5:0]</obj_property>
+   </wvobject>
+</wave_config>

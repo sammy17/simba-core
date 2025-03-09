@@ -55,8 +55,8 @@ module RISCV_PROCESSOR#(
     parameter integer C_Peripheral_Interface_ADDR_WIDTH             = 32,
     parameter integer C_Peripheral_Interface_DATA_WIDTH             = 32,
     parameter integer C_Peripheral_Interface_TRANSACTIONS_NUM       = 4,
-	parameter RAM_HIGH_ADDR  = 32'h9000_0000,
-	parameter RAM_LOW_ADDR   = 32'h8000_0000,
+	parameter RAM_HIGH_ADDR  = 32'h2000_0000,
+	parameter RAM_LOW_ADDR   = 32'h1000_0000,
         // Fixed parameters
         localparam ADDR_WIDTH           = 64,
         localparam DATA_WIDTH           = 64,
@@ -788,7 +788,7 @@ myip_v1_0_M00_AXI # (
    );
 
 ITLB
-    #(.virt_addr_init(32'h8000_0000) ,
+    #(.virt_addr_init(32'h1000_0000) ,
         .init_op(3))                                                      
    itlb (
     .CLK(CLK),
